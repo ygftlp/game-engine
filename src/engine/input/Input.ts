@@ -1,4 +1,5 @@
-// 输入系统：封装平台触摸事件，转换为引擎内坐标（考虑画布缩放比）。
+// 输入系统：封装平台指针事件，转换为引擎内坐标（考虑画布缩放比）。
+// 与具体平台无关，只依赖 IPlatform 的指针回调。
 import { IPlatform } from '../platform/Platform';
 
 export interface TouchPoint {
@@ -14,10 +15,10 @@ export class Input {
   private moveListeners: InputListener[] = [];
   private endListeners: InputListener[] = [];
 
-  constructor(private platform: IPlatform, private scale: number) {
-    this.platform.onTouchStart((t) => this.emit(this.startListeners, t));
-    this.platform.onTouchMove((t) => this.emit(this.moveListeners, t));
-    this.platform.onTouchEnd((t) => this.emit(this.endListeners, t));
+  constructor(platform: IPlatform, private scale: number) {
+    platform.onPointerStart((t) => this.emit(this.startListeners, t));
+    platform.onPointerMove((t) => this.emit(this.moveListeners, t));
+    platform.onPointerEnd((t) => this.emit(this.endListeners, t));
   }
 
   private emit(listeners: InputListener[], raw: Array<{ id: number; x: number; y: number }>): void {
