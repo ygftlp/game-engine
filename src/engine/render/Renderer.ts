@@ -15,6 +15,9 @@ export class Renderer {
   }
 
   clear(color = '#000000'): void {
+    // 渲染前重置变换与 alpha，避免节点世界矩阵残留
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.globalAlpha = 1;
     this.ctx.fillStyle = color;
     this.ctx.fillRect(0, 0, this.width, this.height);
   }
