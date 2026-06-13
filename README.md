@@ -1,25 +1,23 @@
-# lite-wx-game-engine
+# lite-game-engine
 
-轻量级 2D 微信小游戏开发引擎（TypeScript + Canvas 2D + esbuild）。
+轻量级通用 2D 游戏引擎（TypeScript + Canvas 2D + esbuild），**一套代码同时支持微信小游戏 / 抖音小游戏 / H5 三端**。
 
-## 特性
+## 设计原则：平台无关
 
-- 平台适配层：封装 `wx.*` API，隔离平台差异，便于扩展到 H5
-- 游戏主循环：固定时间步长，`update` / `render` 分离
-- 渲染器：封装 Canvas 2D，绘制精灵、文本、图形
-- 节点树 / 场景：父子坐标系，支持位置、旋转、缩放
-- 精灵与纹理：图片异步加载与绘制
-- 输入系统：封装触摸事件并转换为引擎内坐标
-- 资源管理：图片、音频、JSON 异步加载与缓存
-- 音频：封装 `InnerAudioContext`
-- 碰撞检测：轻量 AABB 矩形与圆形碰撞
+引擎核心与任何具体平台（微信 / 抖音 / 浏览器）**零耦合**，核心代码中绝不出现 `wx` / `tt` / `document`。平台能力通过 `IPlatform` 接口从外部**依赖注入**。
+
+### 三层架构
+
+- **引擎核心层**（platform-agnostic）：`Engine`、`Node`、`Scene`、`Renderer`、`Input`、`Loader`、`Audio`、`Collision` 等，只依赖 `IPlatform`。
+- **平台适配层**：`WxPlatform`（微信）、`TtPlatform`（抖音）、`H5Platform`（浏览器）。
+- **游戏层 + 入口**：游戏逻辑用引擎 API 编写；入口按平台分别注入适配器。
 
 ## 目录结构
 
 ```
 src/
-  engine/        引擎核心（可复用）
-    platform/    平台适配层（Platform / WxPlatform）
+  engine/        引擎核心（平台无关，可复用）
+    platform/    平台接口与适配器（Platform / WxPlatform / TtPlatform / H5Platform）
     core/        主循环、节点树、场景
     render/      渲染器、精灵、纹理
     input/       输入系统
@@ -28,25 +26,27 @@ src/
     collision/   碰撞检测
     math/        数学工具
     index.ts     引擎统一入口
-  game/          示例游戏
-  main.ts        微信小游戏入口
+  game/          示例游戏（三端复用同一份）
+  entries/       各平台入口（main.wx.ts / main.tt.ts / main.h5.ts）
+  web/           H5 的 index.html
 ```
 
-## 开发
+## 构建
 
 ```bash
 npm install
-npm run build      # 打包生成 game.js
-npm run watch      # 监听构建
+npm run build      # 输出 dist/{wechat,douyin,h5}
 npm run typecheck  # 类型检查
 ```
 
-构建产物 `game.js` 即微信小游戏入口，配合 `game.json` / `project.config.json` 在微信开发者工具中运行。
+- 微信：`dist/wechat/game.js`（配合 `game.json` / `project.config.json`）
+- 抖音：`dist/douyin/game.js`
+- H5：`dist/h5/index.html` + `dist/h5/game.h5.js`
 
-## 复用方式
+## 复用与扩展
 
-直接复用 `src/engine/` 目录，在上层 `src/game/` 编写游戏逻辑，通过 `src/engine/index.ts` 导入所需 API。
+新增一个平台只需：实现一个 `IPlatform` 适配器 + 一个入口文件。**引擎核心与游戏代码无需修改**。
 
 ## 示例
 
-`src/game/DemoScene.ts` 演示：触摸拖动方块，与目标方块发生 AABB 碰撞时变红。
+`src/game/DemoScene.ts`：一个可拖动方块，与目标方块发生 AABB 碰撞时变红。三端复用同一份场景代码。

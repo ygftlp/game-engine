@@ -1,4 +1,4 @@
-// 引擎统一入口：对外暴露清晰的 API，便于在多个微信小游戏中复用。
+// 引擎统一入口：对外暴露清晰的 API。核心与平台无关，适配器可按需导入。
 export { Engine } from './Engine';
 export { Scene } from './core/Scene';
 export { Node } from './core/Node';
@@ -13,5 +13,9 @@ export { Audio } from './audio/Audio';
 export { Collision } from './collision/Collision';
 export type { Rect, Circle } from './collision/Collision';
 export { Vec2 } from './math/Vec2';
-export { WxPlatform } from './platform/WxPlatform';
+
+// 平台接口与各端适配器（按需在各平台入口中导入其一）
 export type { IPlatform } from './platform/Platform';
+export { WxPlatform } from './platform/WxPlatform';
+export { TtPlatform } from './platform/TtPlatform';
+export { H5Platform } from './platform/H5Platform';

@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "lib": ["ES2019"],
+    "lib": ["ES2019", "DOM"],
     "types": [],
     "outDir": "dist",
     "rootDir": "src"
