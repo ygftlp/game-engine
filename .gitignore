@@ -1,0 +1,5 @@
+node_modules/
+dist/
+game.js
+game.js.map
+*.log

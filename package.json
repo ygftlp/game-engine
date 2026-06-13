@@ -1,0 +1,15 @@
+{
+  "name": "lite-wx-game-engine",
+  "version": "0.1.0",
+  "description": "轻量级 2D 微信小游戏开发引擎 (TypeScript + Canvas)",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  }
+}
