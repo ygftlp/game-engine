@@ -6,6 +6,8 @@ import { Input } from './input/Input';
 import { Loader } from './loader/Loader';
 import { Ticker } from './core/Ticker';
 import { Scene } from './core/Scene';
+import { SceneManager } from './core/SceneManager';
+import { Matrix2D } from './math/Matrix2D';
 
 export class Engine {
   readonly renderer: Renderer;
@@ -14,9 +16,10 @@ export class Engine {
   readonly width: number;
   readonly height: number;
   readonly platform: IPlatform;
+  readonly sceneManager: SceneManager;
 
   private ticker: Ticker;
-  private scene: Scene | null = null;
+  private currentScene: Scene | null = null;
 
   constructor(platform: IPlatform) {
     this.platform = platform;
@@ -28,16 +31,25 @@ export class Engine {
     this.renderer = new Renderer(canvas, this.width, this.height);
     this.input = new Input(platform, screen.pixelRatio);
     this.loader = new Loader(platform);
+    this.sceneManager = new SceneManager();
 
     this.ticker = new Ticker(
       platform,
       (dt) => this.update(dt),
       () => this.render()
     );
+
+    // 监听场景切换，同步 currentScene
+    this.sceneManager.onChange((_old, next) => {
+      this.currentScene = next;
+    });
   }
 
+  /** 设置初始场景（直接设置，不经过 SceneManager） */
   setScene(scene: Scene): void {
-    this.scene = scene;
+    this.currentScene = scene;
+    this.sceneManager.clear();
+    this.sceneManager.push(scene);
   }
 
   start(): void {
@@ -45,11 +57,22 @@ export class Engine {
   }
 
   private update(dt: number): void {
-    if (this.scene) this.scene.update(dt);
+    const scene = this.sceneManager.current();
+    if (scene) scene.update(dt);
   }
 
   private render(): void {
     this.renderer.clear('#1d1f27');
-    if (this.scene) this.scene.visit(this.renderer);
+    const scene = this.sceneManager.current();
+    if (scene) {
+      const identityMatrix = new Matrix2D();
+      try {
+        scene.visit(this.renderer, identityMatrix);
+      } catch (e) {
+        console.error('[Engine] 渲染错误:', e);
+      }
+    } else {
+      console.warn('[Engine] 没有场景');
+    }
   }
 }
