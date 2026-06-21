@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ecdc4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#45b7aa;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="xGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f39c12;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e67e22;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" rx="60" ry="60" fill="url(#bgGrad)"/>
+  
+  <!-- Decorative grid lines -->
+  <line x1="50" y1="100" x2="350" y2="100" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+  <line x1="50" y1="200" x2="350" y2="200" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+  <line x1="50" y1="300" x2="350" y2="300" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+  <line x1="100" y1="50" x2="100" y2="350" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+  <line x1="200" y1="50" x2="200" y2="350" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+  <line x1="300" y1="50" x2="300" y2="350" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1"/>
+  
+  <!-- Game controller icon -->
+  <g transform="translate(80, 80)">
+    <!-- Controller body -->
+    <rect x="0" y="30" width="120" height="70" rx="35" ry="35" fill="url(#accentGrad)" opacity="0.9"/>
+    <!-- D-pad -->
+    <rect x="20" y="50" width="30" height="10" rx="2" fill="#1a1a2e"/>
+    <rect x="30" y="40" width="10" height="30" rx="2" fill="#1a1a2e"/>
+    <!-- Buttons -->
+    <circle cx="90" cy="55" r="8" fill="#f39c12"/>
+    <circle cx="105" cy="65" r="8" fill="#e74c3c"/>
+  </g>
+  
+  <!-- X mark (prominent) -->
+  <g transform="translate(200, 85)">
+    <line x1="0" y1="0" x2="100" y2="70" stroke="url(#xGrad)" stroke-width="18" stroke-linecap="round"/>
+    <line x1="100" y1="0" x2="0" y2="70" stroke="url(#xGrad)" stroke-width="18" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Text: Game -->
+  <text x="100" y="260" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="72" fill="#ffffff" text-anchor="middle">Game</text>
+  
+  <!-- Text: X -->
+  <text x="240" y="260" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="80" fill="url(#xGrad)" text-anchor="middle">X</text>
+  
+  <!-- Text: Engine -->
+  <text x="200" y="320" font-family="Arial, sans-serif" font-weight="300" font-size="48" fill="#4ecdc4" text-anchor="middle" letter-spacing="12">Engine</text>
+  
+  <!-- Version tag -->
+  <rect x="140" y="345" width="120" height="30" rx="15" fill="#4ecdc4" opacity="0.2"/>
+  <text x="200" y="365" font-family="Arial, sans-serif" font-size="14" fill="#4ecdc4" text-anchor="middle">v1.0.0</text>
+  
+  <!-- Subtitle -->
+  <text x="200" y="390" font-family="Arial, sans-serif" font-size="12" fill="#888888" text-anchor="middle">Lightweight 2D Game Engine</text>
+</svg>
