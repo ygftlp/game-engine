@@ -25,12 +25,15 @@ export interface AudioSpriteFrame {
  *   sprite.play('hit');
  */
 export class AudioSprite {
-  private audio: HTMLAudioElement;
+  private audio: any;
   private sprites: Map<string, AudioSpriteFrame>;
   private currentSprite: string | null = null;
   private isPlaying = false;
 
-  constructor(audio: HTMLAudioElement, sprites: Record<string, AudioSpriteFrame>) {
+  constructor(audio: HTMLAudioElement | any, sprites: Record<string, AudioSpriteFrame>) {
+    if (typeof HTMLAudioElement === 'undefined') {
+      throw new Error('AudioSprite requires HTMLAudioElement (H5 platform only)');
+    }
     this.audio = audio;
     this.sprites = new Map(Object.entries(sprites));
 
@@ -141,7 +144,10 @@ export class AudioSpriteManager {
   private sprites = new Map<string, AudioSprite>();
 
   /** 创建音频精灵 */
-  create(name: string, audio: HTMLAudioElement, frames: Record<string, AudioSpriteFrame>): AudioSprite {
+  create(name: string, audio: HTMLAudioElement | any, frames: Record<string, AudioSpriteFrame>): AudioSprite {
+    if (typeof HTMLAudioElement === 'undefined') {
+      throw new Error('AudioSpriteManager requires HTMLAudioElement (H5 platform only)');
+    }
     const sprite = new AudioSprite(audio, frames);
     this.sprites.set(name, sprite);
     return sprite;

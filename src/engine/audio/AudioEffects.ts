@@ -75,6 +75,9 @@ export class AudioEffectChain {
 
   /** 应用到 HTML 音频元素 */
   applyTo(audioElement: HTMLAudioElement): void {
+    if (typeof AudioContext === 'undefined') {
+      throw new Error('AudioEffectChain requires AudioContext (H5 platform only)');
+    }
     if (!this.audioContext) {
       this.audioContext = new AudioContext();
     }

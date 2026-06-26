@@ -549,7 +549,7 @@ if (Collision.pointInRect(mouseX, mouseY, buttonRect)) {
 
 ### Vec2
 
-二维向量，用于位置、速度等计算。
+二维向量，用于位置、速度等计算。所有方法返回新 Vec2（不可变模式）。
 
 ```typescript
 class Vec2 {
@@ -558,10 +558,52 @@ class Vec2 {
 
   constructor(x?: number, y?: number);
   set(x: number, y: number): this;
-  add(v: Vec2): Vec2;
   clone(): Vec2;
+
+  // 向量运算
+  add(v: Vec2): Vec2;            // 加法
+  sub(v: Vec2): Vec2;            // 减法
+  subtract(v: Vec2): Vec2;       // sub 的别名
+  scale(s: number): Vec2;        // 标量缩放
+  dot(v: Vec2): number;          // 点积
+  length(): number;              // 向量长度
+  lengthSq(): number;            // 长度平方（避免 sqrt）
+  normalize(): Vec2;             // 归一化
+  lerp(v: Vec2, t: number): Vec2; // 线性插值
+  negate(): Vec2;                // 取反
+
+  // 距离与角度
+  distanceTo(v: Vec2): number;
+  distanceToSq(v: Vec2): number;
+  angle(): number;               // 与X轴正方向夹角（弧度）
+  rotate(angle: number): Vec2;   // 绕原点旋转
+  perpendicular(): Vec2;         // 垂直向量（逆时针90°）
+
+  // 比较
+  equals(v: Vec2): boolean;
+  toString(): string;
+
+  // 静态方法
+  static fromAngle(angle: number): Vec2;
+  static distance(a: Vec2, b: Vec2): number;
+  static lerp(a: Vec2, b: Vec2, t: number): Vec2;
 }
 ```
+
+| 方法 | 说明 |
+|------|------|
+| `add(v)` | 返回 `this + v` |
+| `sub(v)` | 返回 `this - v` |
+| `scale(s)` | 返回 `this * s` |
+| `dot(v)` | 点积 `x*v.x + y*v.y` |
+| `length()` | `sqrt(x² + y²)` |
+| `normalize()` | 归一化为单位向量 |
+| `lerp(v, t)` | `this + (v - this) * t` |
+| `distanceTo(v)` | 两点间距离 |
+| `angle()` | `atan2(y, x)` |
+| `rotate(angle)` | 按弧度旋转 |
+| `perpendicular()` | 返回 `(-y, x)` |
+| `fromAngle(angle)` | 从角度创建单位向量 |
 
 ---
 

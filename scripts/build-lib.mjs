@@ -48,7 +48,7 @@ async function run() {
   // 4. 生成package.json用于发布
   const pkg = {
     name: 'lite-game-engine',
-    version: '1.0.0',
+    version: '0.2.0',
     description: '轻量级通用 2D 游戏引擎 (TypeScript + Canvas 2D)',
     main: './index.cjs',
     module: './index.mjs',

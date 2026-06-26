@@ -1,6 +1,7 @@
 // 刚体物理引擎：2D 物理模拟，支持刚体、碰撞检测、碰撞响应、重力、摩擦力。
 import { Vec2 } from '../math/Vec2';
 import { EventEmitter } from '../core/EventEmitter';
+import { SpatialGrid } from '../collision/SpatialGrid';
 
 /** 刚体类型 */
 export type BodyType = 'static' | 'dynamic' | 'kinematic';
@@ -186,6 +187,10 @@ export interface WorldConfig {
   iterations?: number;
   /** 睡眠阈值（速度小于此值时进入睡眠） */
   sleepThreshold?: number;
+  /** 是否使用空间网格进行BroadPhase碰撞检测（默认true） */
+  useSpatialGrid?: boolean;
+  /** 空间网格单元大小（默认100） */
+  gridCellSize?: number;
 }
 
 /**
@@ -197,12 +202,16 @@ export class PhysicsWorld extends EventEmitter {
   private iterations: number;
   private sleepThreshold: number;
   private contacts: Contact[] = [];
+  private useSpatialGrid: boolean;
+  private spatialGrid: SpatialGrid;
 
   constructor(config?: WorldConfig) {
     super();
     this.gravity = config?.gravity ?? new Vec2(0, 980);
     this.iterations = config?.iterations ?? 10;
     this.sleepThreshold = config?.sleepThreshold ?? 0.5;
+    this.useSpatialGrid = config?.useSpatialGrid ?? true;
+    this.spatialGrid = new SpatialGrid(config?.gridCellSize ?? 100);
   }
 
   /** 添加刚体 */
@@ -234,16 +243,41 @@ export class PhysicsWorld extends EventEmitter {
 
     // 碰撞检测与响应
     this.contacts.length = 0;
-    for (let i = 0; i < this.bodies.length; i++) {
-      for (let j = i + 1; j < this.bodies.length; j++) {
-        const a = this.bodies[i];
-        const b = this.bodies[j];
+    if (this.useSpatialGrid) {
+      this.spatialGrid.clear();
+      for (const body of this.bodies) {
+        if (body.type === 'static' && !body.awake) continue;
+        const aabb = body.getAABB();
+        this.spatialGrid.insert(body.id, aabb);
+      }
+      const bodyById = new Map<number, RigidBody>();
+      for (const body of this.bodies) {
+        bodyById.set(body.id, body);
+      }
+      const pairs = this.spatialGrid.getCollisionPairs();
+      for (const [idA, idB] of pairs) {
+        const a = bodyById.get(idA);
+        const b = bodyById.get(idB);
+        if (!a || !b) continue;
         if (a.type === 'static' && b.type === 'static') continue;
         if (!(a.collisionGroup & b.collisionMask) || !(b.collisionGroup & a.collisionMask)) continue;
-
         const contact = this.detectCollision(a, b);
         if (contact) {
           this.contacts.push(contact);
+        }
+      }
+    } else {
+      for (let i = 0; i < this.bodies.length; i++) {
+        for (let j = i + 1; j < this.bodies.length; j++) {
+          const a = this.bodies[i];
+          const b = this.bodies[j];
+          if (a.type === 'static' && b.type === 'static') continue;
+          if (!(a.collisionGroup & b.collisionMask) || !(b.collisionGroup & a.collisionMask)) continue;
+
+          const contact = this.detectCollision(a, b);
+          if (contact) {
+            this.contacts.push(contact);
+          }
         }
       }
     }

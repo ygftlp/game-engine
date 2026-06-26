@@ -302,6 +302,7 @@ export class EnhancedParticleEmitter extends Node {
       p.life -= dt;
       if (p.life <= 0) {
         p.active = false;
+        this.spawnSubEmitterParticles('death', p.position);
         continue;
       }
 
@@ -522,6 +523,61 @@ export class EnhancedParticleEmitter extends Node {
       default:
         return this.emitterPosition.clone();
     }
+  }
+
+  private spawnSubEmitterParticles(trigger: SubEmitterTrigger, position: Vec3): void {
+    const subEmitters = this.config.subEmitters;
+    if (!subEmitters) return;
+
+    for (const sub of subEmitters) {
+      if (sub.trigger !== trigger) continue;
+      if (sub.probability !== undefined && Math.random() > sub.probability) continue;
+
+      const sys = sub.system;
+      const count = Math.ceil((sys.emissionRate ?? 10) * (sys.duration ?? 0.1));
+      for (let i = 0; i < count; i++) {
+        this.spawnSubParticle(position, sys);
+      }
+    }
+  }
+
+  private spawnSubParticle(position: Vec3, sys: Partial<EnhancedParticleConfig>): void {
+    if (this.particles.length >= this.config.maxParticles) return;
+
+    let particle: EnhancedParticle | null = null;
+    for (const p of this.particles) {
+      if (!p.active) { particle = p; break; }
+    }
+    if (!particle) {
+      particle = { position: new Vec3(), velocity: new Vec3(), rotation: 0, angularVelocity: 0, size: 0, sizeEnd: 0, life: 0, maxLife: 0, color: new Vec3(), endColor: new Vec3(), alpha: 0, endAlpha: 0, active: false };
+      this.particles.push(particle);
+    }
+
+    particle.position = position.clone();
+    particle.velocity = this.getEmitVelocity();
+
+    const lt = sys.lifetimeRange ?? { min: 0.5, max: 1 };
+    particle.life = lt.min + Math.random() * (lt.max - lt.min);
+    particle.maxLife = particle.life;
+
+    const ss = sys.startSizeRange ?? { min: 2, max: 4 };
+    particle.size = ss.min + Math.random() * (ss.max - ss.min);
+    particle.sizeEnd = sys.endSize ?? 0;
+
+    particle.rotation = 0;
+    particle.angularVelocity = 0;
+    if (sys.startRotationRange) {
+      particle.rotation = sys.startRotationRange.min + Math.random() * (sys.startRotationRange.max - sys.startRotationRange.min);
+    }
+    if (sys.rotationSpeedRange) {
+      particle.angularVelocity = sys.rotationSpeedRange.min + Math.random() * (sys.rotationSpeedRange.max - sys.rotationSpeedRange.min);
+    }
+
+    particle.color = sys.startColor?.clone() ?? new Vec3(1, 1, 1);
+    particle.endColor = sys.endColor?.clone() ?? new Vec3(1, 1, 1);
+    particle.alpha = sys.startAlpha ?? 1;
+    particle.endAlpha = sys.endAlpha ?? 0;
+    particle.active = true;
   }
 
   private getEmitVelocity(): Vec3 {

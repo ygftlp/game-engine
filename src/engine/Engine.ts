@@ -24,10 +24,14 @@ export class Engine {
   constructor(platform: IPlatform) {
     this.platform = platform;
     const screen = platform.getScreenInfo();
+    
+    // 使用物理像素尺寸
     this.width = screen.width * screen.pixelRatio;
     this.height = screen.height * screen.pixelRatio;
 
     const canvas = platform.createCanvas();
+    canvas.width = this.width;
+    canvas.height = this.height;
     this.renderer = new Renderer(canvas, this.width, this.height);
     this.input = new Input(platform, screen.pixelRatio);
     this.loader = new Loader(platform);

@@ -121,6 +121,16 @@ export abstract class UIWidget extends Node {
     return;
   }
 
+  /** 悬停开始回调（子类覆盖） */
+  onHoverStart(): void {
+    this._state.hover = true;
+  }
+
+  /** 悬停结束回调（子类覆盖） */
+  onHoverEnd(): void {
+    this._state.hover = false;
+  }
+
   /** 绘制背景 */
   protected drawBackground(renderer: Renderer): void {
     const ctx = renderer.ctx;

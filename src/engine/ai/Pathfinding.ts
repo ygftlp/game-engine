@@ -46,6 +46,73 @@ const DEFAULT_CONFIG: Required<PathfindingConfig> = {
   heuristic: (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y),
 };
 
+/** 最小二叉堆（基于 f 值排序） */
+class MinHeap {
+  private data: GridNode[] = [];
+
+  get length(): number {
+    return this.data.length;
+  }
+
+  push(node: GridNode): void {
+    this.data.push(node);
+    this.bubbleUp(this.data.length - 1);
+  }
+
+  pop(): GridNode | undefined {
+    if (this.data.length === 0) return undefined;
+    const top = this.data[0];
+    const last = this.data.pop()!;
+    if (this.data.length > 0) {
+      this.data[0] = last;
+      this.sinkDown(0);
+    }
+    return top;
+  }
+
+  /** 更新节点的 f 值后调用以恢复堆性质 */
+  resync(node: GridNode): void {
+    const idx = this.data.indexOf(node);
+    if (idx >= 0) {
+      this.bubbleUp(idx);
+    }
+  }
+
+  private bubbleUp(idx: number): void {
+    while (idx > 0) {
+      const parent = (idx - 1) >> 1;
+      if (this.data[idx].f < this.data[parent].f) {
+        [this.data[idx], this.data[parent]] = [this.data[parent], this.data[idx]];
+        idx = parent;
+      } else {
+        break;
+      }
+    }
+  }
+
+  private sinkDown(idx: number): void {
+    const len = this.data.length;
+    while (true) {
+      const left = 2 * idx + 1;
+      const right = 2 * idx + 2;
+      let smallest = idx;
+
+      if (left < len && this.data[left].f < this.data[smallest].f) {
+        smallest = left;
+      }
+      if (right < len && this.data[right].f < this.data[smallest].f) {
+        smallest = right;
+      }
+      if (smallest !== idx) {
+        [this.data[idx], this.data[smallest]] = [this.data[smallest], this.data[idx]];
+        idx = smallest;
+      } else {
+        break;
+      }
+    }
+  }
+}
+
 /**
  * 网格寻路器
  */
@@ -113,8 +180,9 @@ export class GridPathfinder {
     startNode.h = this.config.heuristic(startNode, endNode);
     startNode.f = startNode.h;
 
-    // 开放列表（用数组模拟优先队列）
-    const openList: GridNode[] = [startNode];
+    // 开放列表（二叉堆优先队列）
+    const openList = new MinHeap();
+    openList.push(startNode);
     startNode.opened = true;
 
     let explored = 0;
@@ -137,15 +205,7 @@ export class GridPathfinder {
     }
 
     while (openList.length > 0) {
-      // 找到 f 值最小的节点
-      let minIdx = 0;
-      for (let i = 1; i < openList.length; i++) {
-        if (openList[i].f < openList[minIdx].f) {
-          minIdx = i;
-        }
-      }
-
-      const current = openList[minIdx];
+      const current = openList.pop()!;
       explored++;
 
       // 找到终点
@@ -159,8 +219,6 @@ export class GridPathfinder {
         };
       }
 
-      // 从开放列表移除，加入关闭列表
-      openList.splice(minIdx, 1);
       current.closed = true;
 
       // 遍历邻居
@@ -192,6 +250,8 @@ export class GridPathfinder {
           if (!neighbor.opened) {
             neighbor.opened = true;
             openList.push(neighbor);
+          } else {
+            openList.resync(neighbor);
           }
         }
       }

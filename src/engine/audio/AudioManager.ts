@@ -161,7 +161,7 @@ export class AudioManager {
 
   /** 全局取消静音。 */
   unmuteAll(): void {
-    for (const cat of ['music', 'music', 'voice'] as AudioCategory[]) {
+    for (const cat of ['music', 'sfx', 'voice'] as AudioCategory[]) {
       this.categories[cat].muted = false;
     }
     this.updateAll();

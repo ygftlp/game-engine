@@ -26,6 +26,8 @@ export interface CollisionInfo {
 export abstract class SteeringBehavior {
   /** 权重 */
   weight = 1;
+  /** 最大速度 */
+  maxSpeed = 100;
 
   abstract calculate(target: SteeringTarget): SteeringOutput;
 }
@@ -56,10 +58,11 @@ export class Seek extends SteeringBehavior {
   private currentWaypoint = 0;
   private waypointRadius = 20;
 
-  constructor(path?: Vec2[], waypointRadius = 20) {
+  constructor(path?: Vec2[], waypointRadius = 20, maxSpeed = 100) {
     super();
     this.path = path ?? [];
     this.waypointRadius = waypointRadius;
+    this.maxSpeed = maxSpeed;
   }
 
   /** 设置路径 */
@@ -88,7 +91,7 @@ export class Seek extends SteeringBehavior {
     }
 
     // 向目标点移动
-    const desired = toWaypoint.normalize().scale(100); // 假设最大速度 100
+    const desired = toWaypoint.normalize().scale(this.maxSpeed);
     const steer = desired.subtract(target.velocity);
 
     return {
@@ -102,9 +105,10 @@ export class Seek extends SteeringBehavior {
 export class Pursue extends SteeringBehavior {
   private maxPrediction = 0.5;
 
-  constructor(maxPrediction = 0.5) {
+  constructor(maxPrediction = 0.5, maxSpeed = 100) {
     super();
     this.maxPrediction = maxPrediction;
+    this.maxSpeed = maxSpeed;
   }
 
   calculate(target: SteeringTarget): SteeringOutput {
@@ -116,7 +120,7 @@ export class Pursue extends SteeringBehavior {
     const predicted = target.targetPosition.add(target.targetVelocity.scale(this.maxPrediction));
 
     // 向预测位置移动
-    const desired = predicted.subtract(target.position).normalize().scale(100);
+    const desired = predicted.subtract(target.position).normalize().scale(this.maxSpeed);
     const steer = desired.subtract(target.velocity);
 
     return {
@@ -130,9 +134,10 @@ export class Pursue extends SteeringBehavior {
 export class Flee extends SteeringBehavior {
   private panicRadius = 200;
 
-  constructor(panicRadius = 200) {
+  constructor(panicRadius = 200, maxSpeed = 100) {
     super();
     this.panicRadius = panicRadius;
+    this.maxSpeed = maxSpeed;
   }
 
   calculate(target: SteeringTarget): SteeringOutput {
@@ -147,7 +152,7 @@ export class Flee extends SteeringBehavior {
       return { linear: new Vec2(), angular: 0 };
     }
 
-    const desired = toTarget.normalize().scale(100);
+    const desired = toTarget.normalize().scale(this.maxSpeed);
     const steer = desired.subtract(target.velocity);
 
     return {
@@ -162,10 +167,11 @@ export class Arrive extends SteeringBehavior {
   private slowRadius = 100;
   private targetRadius = 5;
 
-  constructor(slowRadius = 100, targetRadius = 5) {
+  constructor(slowRadius = 100, targetRadius = 5, maxSpeed = 100) {
     super();
     this.slowRadius = slowRadius;
     this.targetRadius = targetRadius;
+    this.maxSpeed = maxSpeed;
   }
 
   calculate(target: SteeringTarget): SteeringOutput {
@@ -182,9 +188,9 @@ export class Arrive extends SteeringBehavior {
 
     let speed: number;
     if (distance > this.slowRadius) {
-      speed = 100;
+      speed = this.maxSpeed;
     } else {
-      speed = 100 * (distance / this.slowRadius);
+      speed = this.maxSpeed * (distance / this.slowRadius);
     }
 
     const desired = toTarget.normalize().scale(speed);
@@ -379,9 +385,10 @@ export class Alignment extends SteeringBehavior {
 export class Cohesion extends SteeringBehavior {
   private neighborRadius = 150;
 
-  constructor(neighborRadius = 150) {
+  constructor(neighborRadius = 150, maxSpeed = 100) {
     super();
     this.neighborRadius = neighborRadius;
+    this.maxSpeed = maxSpeed;
   }
 
   calculate(target: SteeringTarget): SteeringOutput {
@@ -403,7 +410,7 @@ export class Cohesion extends SteeringBehavior {
     if (count === 0) return { linear: new Vec2(), angular: 0 };
 
     center = center.scale(1 / count);
-    const desired = center.subtract(target.position).normalize().scale(100);
+    const desired = center.subtract(target.position).normalize().scale(this.maxSpeed);
     const steer = desired.subtract(target.velocity);
 
     return {

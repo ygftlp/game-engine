@@ -235,26 +235,20 @@ export class WebGLRenderer {
     u0 = 0, v0 = 0, u1 = 1, v1 = 1,
     r = 1, g = 1, b = 1, a = 1
   ): void {
-    if (this.spriteBatchCount >= this.maxBatchSize) {
-      this.flushSpriteBatch();
-    }
-
-    // 顶点数据将通过缓冲区上传
-    this.spriteBatchCount++;
-
-    // 实际实现中需要填充顶点缓冲区
-    // 这里是简化的 API 设计
+    // TODO: 实现 WebGL 精灵批处理 — 需要顶点缓冲区管理、纹理图集绑定、批量绘制提交
+    // 当前为占位实现，所有参数均未使用
     void texture;
     void x; void y; void width; void height;
     void u0; void v0; void u1; void v1;
     void r; void g; void b; void a;
+    throw new Error('WebGL sprite batch not yet implemented');
   }
 
   /** 刷新精灵批处理 */
   flushSpriteBatch(): void {
+    // TODO: 实现 WebGL 精灵批处理刷新 — 需要上传顶点缓冲区并执行 gl.drawElements
     if (this.spriteBatchCount === 0) return;
-    // 上传顶点缓冲区并绘制
-    this.spriteBatchCount = 0;
+    throw new Error('WebGL sprite batch not yet implemented');
   }
 
   /** 设置矩阵 uniform */

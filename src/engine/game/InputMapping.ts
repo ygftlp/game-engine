@@ -62,6 +62,7 @@ export class InputMapper {
   private keyStates = new Map<string, InputState>();
   private axisValues = new Map<string, number>();
   private actionStates = new Map<string, InputState>();
+  private longPressFired = new Map<string, boolean>();
 
   /** 绑定按键 */
   bindKey(action: string, key: string, hold = false, longPressTime?: number): void {
@@ -121,6 +122,9 @@ export class InputMapper {
       for (const binding of bindings) {
         if (binding.key === key) {
           this.updateActionState(action, true);
+          if (binding.longPressTime !== undefined) {
+            this.longPressFired.set(action, false);
+          }
         }
       }
     }
@@ -234,6 +238,25 @@ export class InputMapper {
 
       this.axisValues.set(axis, value);
     }
+
+    // 检测长按
+    for (const [action, bindings] of this.keyBindings) {
+      for (const binding of bindings) {
+        if (binding.longPressTime === undefined) continue;
+        if (this.longPressFired.get(action)) continue;
+
+        const keyState = this.keyStates.get(binding.key);
+        if (keyState?.pressed && keyState.holdTime >= binding.longPressTime) {
+          this.longPressFired.set(action, true);
+          this.actionStates.set(action, {
+            pressed: true,
+            justPressed: false,
+            justReleased: false,
+            holdTime: keyState.holdTime,
+          });
+        }
+      }
+    }
   }
 
   /** 清除所有绑定 */
@@ -244,6 +267,7 @@ export class InputMapper {
     this.keyStates.clear();
     this.axisValues.clear();
     this.actionStates.clear();
+    this.longPressFired.clear();
   }
 
   /** 获取所有绑定的按键 */

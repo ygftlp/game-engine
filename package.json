@@ -2,14 +2,37 @@
   "name": "lite-game-engine",
   "version": "0.2.0",
   "description": "轻量级通用 2D 游戏引擎 (TypeScript + Canvas)，支持微信 / 抖音 / H5 三端",
-  "private": true,
+  "private": false,
+  "main": "./dist/lib/index.cjs",
+  "module": "./dist/lib/index.mjs",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/lib/index.mjs",
+      "require": "./dist/lib/index.cjs"
+    }
+  },
+  "files": [
+    "dist/lib",
+    "dist/types"
+  ],
+  "license": "MIT",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:lib": "node scripts/build-lib.mjs",
     "watch": "node scripts/build.mjs --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build:lib"
   },
   "devDependencies": {
     "esbuild": "^0.21.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.1"
   }
 }

@@ -10,7 +10,11 @@ export interface TextureFrame {
 }
 
 export class Texture {
-  constructor(public readonly image: IImage) {}
+  loaded: boolean;
+
+  constructor(public readonly image: IImage, loaded = true) {
+    this.loaded = loaded;
+  }
 
   get width(): number {
     return this.image.width;

@@ -7,8 +7,6 @@ export class Renderer {
   readonly height: number;
 
   constructor(canvas: ICanvas, width: number, height: number) {
-    canvas.width = width;
-    canvas.height = height;
     this.width = width;
     this.height = height;
     this.ctx = canvas.getContext('2d');

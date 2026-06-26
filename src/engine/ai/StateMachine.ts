@@ -68,6 +68,11 @@ export class FSM {
     }
   }
 
+  /** 获取所有状态名 */
+  getStateNames(): string[] {
+    return [...this.states.keys()];
+  }
+
   /** 获取当前状态名 */
   getCurrentStateName(): string | null {
     return this.currentState?.name ?? null;
@@ -187,8 +192,11 @@ export class HierarchicalFSM {
   setInitialState(stateName: string): void {
     this.currentState = stateName;
     const subFSM = this.subMachines.get(stateName);
-    if (subFSM) {
-      // 子状态机的初始状态需要另外设置
+    if (subFSM && subFSM.getCurrentState() === null) {
+      const subStates = subFSM.getStateNames();
+      if (subStates.length > 0) {
+        subFSM.setInitialState(subStates[0]);
+      }
     }
   }
 
@@ -201,6 +209,13 @@ export class HierarchicalFSM {
       }
     }
     this.currentState = stateName;
+    const subFSM = this.subMachines.get(stateName);
+    if (subFSM) {
+      const subStates = subFSM.getStateNames();
+      if (subStates.length > 0) {
+        subFSM.setInitialState(subStates[0]);
+      }
+    }
   }
 
   /** 获取当前状态 */

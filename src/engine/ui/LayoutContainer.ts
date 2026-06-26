@@ -3,7 +3,7 @@
 import { UIWidget } from './UIWidget';
 import { FlexLayout, FlexContainerConfig, FlexItemConfig } from './FlexLayout';
 import { ScrollView } from './ScrollView';
-import { ConstraintSolver, ConstraintConfig } from './ConstraintLayout';
+import { ConstraintSolver, ConstraintConfig, constraintMargins } from './ConstraintLayout';
 import { Matrix2D } from '../math/Matrix2D';
 import { Renderer } from '../render/Renderer';
 
@@ -246,10 +246,11 @@ export function createCenterLayout(): LayoutContainer {
 }
 
 /** 创建填充布局 */
-export function createFillLayout(_margin = 10): LayoutContainer {
+export function createFillLayout(margin = 10): LayoutContainer {
   const container = new LayoutContainer();
   const solver = new ConstraintSolver();
   container.setConstraintLayout(solver);
+  constraintMargins(container, margin, margin, margin, margin);
   return container;
 }
 

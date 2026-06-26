@@ -143,9 +143,27 @@ export class UIManager extends Node {
     }
   }
 
+  private hoveredWidget: UIWidget | null = null;
+
   private handleTouchMove(touches: TouchPoint[]): void {
-    if (touches.length === 0 || !this.activeWidget) return;
-    this.activeWidget.onTouchMove(touches[0]);
+    if (touches.length === 0) return;
+    const point = touches[0];
+
+    if (this.activeWidget) {
+      this.activeWidget.onTouchMove(point);
+    }
+
+    // 检测触摸移动时触点下方的 widget，触发 hover 回调
+    const widget = this.findWidgetAtPoint(point.x, point.y);
+    if (widget !== this.hoveredWidget) {
+      if (this.hoveredWidget) {
+        this.hoveredWidget.onHoverEnd();
+      }
+      this.hoveredWidget = widget;
+      if (widget) {
+        widget.onHoverStart();
+      }
+    }
   }
 
   private handleTouchEnd(touches: TouchPoint[]): void {
@@ -159,6 +177,10 @@ export class UIManager extends Node {
       this.emitUI('touchend', event);
     }
     this.activeWidget = null;
+    if (this.hoveredWidget) {
+      this.hoveredWidget.onHoverEnd();
+      this.hoveredWidget = null;
+    }
   }
 
   /** 查找指定点下的UI组件 */
