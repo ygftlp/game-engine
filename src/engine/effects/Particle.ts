@@ -1,5 +1,6 @@
 // 粒子系统：支持发射器配置、粒子生命周期、预设效果。
 import { Node } from '../core/Node';
+import { Pool } from '../core/Pool';
 import { Renderer } from '../render/Renderer';
 import { Vec2 } from '../math/Vec2';
 
@@ -97,6 +98,7 @@ interface Particle {
 export class ParticleEmitter extends Node {
   private config: EmitterConfig;
   private particles: Particle[] = [];
+  private particlePool: Pool<Particle>;
   private emitAccumulator = 0;
   private _playing = false;
   private _duration = 0;
@@ -109,6 +111,28 @@ export class ParticleEmitter extends Node {
     this.config = config;
     this.width = 0;
     this.height = 0;
+    this.particlePool = new Pool<Particle>(
+      () => ({
+        x: 0, y: 0, vx: 0, vy: 0,
+        ax: 0, ay: 0, gravity: 0,
+        size: 0, sizeEnd: 0,
+        alpha: 1, alphaEnd: 0,
+        color: '', color2: null,
+        life: 0, maxLife: 0,
+        rotation: 0, rotateSpeed: 0,
+      }),
+      (p) => {
+        p.x = 0; p.y = 0; p.vx = 0; p.vy = 0;
+        p.ax = 0; p.ay = 0; p.gravity = 0;
+        p.size = 0; p.sizeEnd = 0;
+        p.alpha = 1; p.alphaEnd = 0;
+        p.color = ''; p.color2 = null;
+        p.life = 0; p.maxLife = 0;
+        p.rotation = 0; p.rotateSpeed = 0;
+      },
+      config.maxParticles * 2,
+      config.maxParticles
+    );
   }
 
   /** 开始发射。 */
@@ -126,6 +150,9 @@ export class ParticleEmitter extends Node {
 
   /** 立即清空所有粒子。 */
   clear(): void {
+    for (const p of this.particles) {
+      this.particlePool.release(p);
+    }
     this.particles.length = 0;
   }
 
@@ -170,6 +197,7 @@ export class ParticleEmitter extends Node {
       const p = this.particles[i];
       p.life -= dt;
       if (p.life <= 0) {
+        this.particlePool.release(p);
         this.particles.splice(i, 1);
         continue;
       }
@@ -186,17 +214,18 @@ export class ParticleEmitter extends Node {
   protected draw(renderer: Renderer): void {
     const ctx = renderer.ctx;
 
+    ctx.save();
+
     for (const p of this.particles) {
       const t = 1 - p.life / p.maxLife;
       const size = p.size + (p.sizeEnd - p.size) * t;
       const alpha = p.alpha + (p.alphaEnd - p.alpha) * t;
+      const cos = Math.cos(p.rotation);
+      const sin = Math.sin(p.rotation);
 
-      ctx.save();
+      ctx.setTransform(cos, sin, -sin, cos, p.x, p.y);
       ctx.globalAlpha = alpha;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation);
 
-      // 颜色插值
       if (p.color2) {
         ctx.fillStyle = this.lerpColor(p.color, p.color2, t);
       } else {
@@ -204,8 +233,9 @@ export class ParticleEmitter extends Node {
       }
 
       ctx.fillRect(-size / 2, -size / 2, size, size);
-      ctx.restore();
     }
+
+    ctx.restore();
   }
 
   private emitParticle(): void {

@@ -30,11 +30,32 @@ export class Input {
     this.startListeners.push(fn);
   }
 
+  offStart(fn: InputListener): void {
+    const idx = this.startListeners.indexOf(fn);
+    if (idx >= 0) this.startListeners.splice(idx, 1);
+  }
+
   onMove(fn: InputListener): void {
     this.moveListeners.push(fn);
   }
 
+  offMove(fn: InputListener): void {
+    const idx = this.moveListeners.indexOf(fn);
+    if (idx >= 0) this.moveListeners.splice(idx, 1);
+  }
+
   onEnd(fn: InputListener): void {
     this.endListeners.push(fn);
+  }
+
+  offEnd(fn: InputListener): void {
+    const idx = this.endListeners.indexOf(fn);
+    if (idx >= 0) this.endListeners.splice(idx, 1);
+  }
+
+  clearAll(): void {
+    this.startListeners.length = 0;
+    this.moveListeners.length = 0;
+    this.endListeners.length = 0;
   }
 }

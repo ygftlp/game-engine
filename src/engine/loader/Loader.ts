@@ -6,6 +6,7 @@ import { Audio } from '../audio/Audio';
 export class Loader {
   private textureCache = new Map<string, Texture>();
   private jsonCache = new Map<string, unknown>();
+  private audioCache = new Map<string, Audio>();
 
   constructor(private platform: IPlatform) {}
 
@@ -25,8 +26,11 @@ export class Loader {
   }
 
   loadAudio(url: string): Audio {
+    const cached = this.audioCache.get(url);
+    if (cached) return cached;
     const audio = new Audio(this.platform);
     audio.load(url);
+    this.audioCache.set(url, audio);
     return audio;
   }
 
@@ -36,5 +40,45 @@ export class Loader {
     const data = await this.platform.requestJSON(url);
     this.jsonCache.set(url, data);
     return data;
+  }
+
+  unloadTexture(url: string): void {
+    const tex = this.textureCache.get(url);
+    if (tex) {
+      tex.dispose();
+      this.textureCache.delete(url);
+    }
+  }
+
+  unloadAudio(url: string): void {
+    const audio = this.audioCache.get(url);
+    if (audio) {
+      audio.destroy();
+      this.audioCache.delete(url);
+    }
+  }
+
+  unloadJSON(url: string): void {
+    this.jsonCache.delete(url);
+  }
+
+  clearCache(): void {
+    for (const tex of this.textureCache.values()) {
+      tex.dispose();
+    }
+    this.textureCache.clear();
+    for (const audio of this.audioCache.values()) {
+      audio.destroy();
+    }
+    this.audioCache.clear();
+    this.jsonCache.clear();
+  }
+
+  getCacheStats(): { textures: number; audios: number; jsons: number } {
+    return {
+      textures: this.textureCache.size,
+      audios: this.audioCache.size,
+      jsons: this.jsonCache.size,
+    };
   }
 }

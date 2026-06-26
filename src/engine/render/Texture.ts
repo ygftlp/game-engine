@@ -11,9 +11,16 @@ export interface TextureFrame {
 
 export class Texture {
   loaded: boolean;
+  private _image: IImage | null;
 
-  constructor(public readonly image: IImage, loaded = true) {
+  constructor(image: IImage, loaded = true) {
+    this._image = image;
     this.loaded = loaded;
+  }
+
+  get image(): IImage {
+    if (!this._image) throw new Error('Texture has been disposed');
+    return this._image;
   }
 
   get width(): number {
@@ -22,5 +29,13 @@ export class Texture {
 
   get height(): number {
     return this.image.height;
+  }
+
+  dispose(): void {
+    if (this._image && 'src' in this._image) {
+      (this._image as any).src = '';
+    }
+    this._image = null;
+    this.loaded = false;
   }
 }

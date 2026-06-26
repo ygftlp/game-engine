@@ -83,6 +83,15 @@ export class WebGLRenderer {
   private spriteBatchCount = 0;
   private maxBatchSize = 10000;
 
+  private batchVertices: Float32Array;
+  private batchVertexCount = 0;
+  private batchIndexCount = 0;
+  private batchTextureGroups: Array<{texture: GLTexture, indexOffset: number, indexCount: number}> = [];
+  private currentBatchTexture: GLTexture | null = null;
+  private indexBuffer: WebGLBuffer;
+  private static readonly FLOATS_PER_VERTEX = 9;
+  private static readonly VERTEX_STRIDE = 9 * 4;
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.width = canvas.width;
@@ -104,6 +113,23 @@ export class WebGLRenderer {
     // 默认着色器
     this.defaultShader = this.createShader(DEFAULT_VERTEX_SHADER, DEFAULT_FRAGMENT_SHADER);
     this.spriteBatchBuffer = this.gl.createBuffer()!;
+    this.indexBuffer = this.gl.createBuffer()!;
+    this.batchVertices = new Float32Array(this.maxBatchSize * 4 * WebGLRenderer.FLOATS_PER_VERTEX);
+
+    const maxIndices = this.maxBatchSize * 6;
+    const indexData = new Uint16Array(maxIndices);
+    for (let i = 0; i < this.maxBatchSize; i++) {
+      const vi = i * 4;
+      const ii = i * 6;
+      indexData[ii + 0] = vi + 0;
+      indexData[ii + 1] = vi + 1;
+      indexData[ii + 2] = vi + 2;
+      indexData[ii + 3] = vi + 2;
+      indexData[ii + 4] = vi + 3;
+      indexData[ii + 5] = vi + 0;
+    }
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexData, gl.STATIC_DRAW);
 
     // 启用混合
     gl.enable(gl.BLEND);
@@ -224,7 +250,10 @@ export class WebGLRenderer {
 
   /** 开始精灵批处理 */
   beginSpriteBatch(): void {
-    this.spriteBatchCount = 0;
+    this.batchVertexCount = 0;
+    this.batchIndexCount = 0;
+    this.batchTextureGroups.length = 0;
+    this.currentBatchTexture = null;
     this.useDefaultShader();
   }
 
@@ -235,13 +264,65 @@ export class WebGLRenderer {
     u0 = 0, v0 = 0, u1 = 1, v1 = 1,
     r = 1, g = 1, b = 1, a = 1
   ): void {
-    // TODO: 实现 WebGL 精灵批处理 — 需要顶点缓冲区管理、纹理图集绑定、批量绘制提交
-    // 当前为占位实现，所有参数均未使用
-    void texture;
-    void x; void y; void width; void height;
-    void u0; void v0; void u1; void v1;
-    void r; void g; void b; void a;
-    throw new Error('WebGL sprite batch not yet implemented');
+    if (this.batchVertexCount + 4 > this.maxBatchSize * 4) {
+      this.flushSpriteBatch();
+    }
+
+    if (this.currentBatchTexture !== texture) {
+      this.batchTextureGroups.push({
+        texture,
+        indexOffset: this.batchIndexCount,
+        indexCount: 0,
+      });
+      this.currentBatchTexture = texture;
+    }
+
+    const o = this.batchVertexCount * WebGLRenderer.FLOATS_PER_VERTEX;
+    const v = this.batchVertices;
+
+    v[o + 0] = x;
+    v[o + 1] = y;
+    v[o + 2] = 0;
+    v[o + 3] = u0;
+    v[o + 4] = v0;
+    v[o + 5] = r;
+    v[o + 6] = g;
+    v[o + 7] = b;
+    v[o + 8] = a;
+
+    v[o + 9] = x + width;
+    v[o + 10] = y;
+    v[o + 11] = 0;
+    v[o + 12] = u1;
+    v[o + 13] = v0;
+    v[o + 14] = r;
+    v[o + 15] = g;
+    v[o + 16] = b;
+    v[o + 17] = a;
+
+    v[o + 18] = x + width;
+    v[o + 19] = y + height;
+    v[o + 20] = 0;
+    v[o + 21] = u1;
+    v[o + 22] = v1;
+    v[o + 23] = r;
+    v[o + 24] = g;
+    v[o + 25] = b;
+    v[o + 26] = a;
+
+    v[o + 27] = x;
+    v[o + 28] = y + height;
+    v[o + 29] = 0;
+    v[o + 30] = u0;
+    v[o + 31] = v1;
+    v[o + 32] = r;
+    v[o + 33] = g;
+    v[o + 34] = b;
+    v[o + 35] = a;
+
+    this.batchVertexCount += 4;
+    this.batchIndexCount += 6;
+    this.batchTextureGroups[this.batchTextureGroups.length - 1].indexCount += 6;
   }
 
   /** 刷新精灵批处理 */

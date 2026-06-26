@@ -71,7 +71,7 @@ export class Engine {
     if (scene) {
       const identityMatrix = new Matrix2D();
       try {
-        scene.visit(this.renderer, identityMatrix);
+        scene.visit(this.renderer, identityMatrix, scene.camera ?? undefined);
       } catch (e) {
         console.error('[Engine] 渲染错误:', e);
       }
