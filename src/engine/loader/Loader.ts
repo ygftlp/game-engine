@@ -11,6 +11,11 @@ export interface ResourceDescriptor {
   type: ResourceType;
 }
 
+interface ResourceFailure {
+  resource: ResourceDescriptor;
+  reason: unknown;
+}
+
 export class Loader {
   private textureCache = new Map<string, Texture>();
   private jsonCache = new Map<string, unknown>();
@@ -59,17 +64,21 @@ export class Loader {
   }
 
   async loadAll(resources: ResourceDescriptor[]): Promise<void> {
-    const results = await Promise.allSettled(
-      resources.map((resource) => this.loadResource(resource))
-    );
+    const failed: ResourceFailure[] = [];
 
-    const failed = results
-      .map((result, index) => ({ result, resource: resources[index] }))
-      .filter((entry): entry is { result: PromiseRejectedResult; resource: ResourceDescriptor } => entry.result.status === 'rejected');
+    await Promise.all(
+      resources.map(async (resource) => {
+        try {
+          await this.loadResource(resource);
+        } catch (reason) {
+          failed.push({ resource, reason });
+        }
+      })
+    );
 
     if (failed.length > 0) {
       const details = failed
-        .map(({ resource, result }) => `${resource.type}:${resource.url} -> ${this.formatError(result.reason)}`)
+        .map(({ resource, reason }) => `${resource.type}:${resource.url} -> ${this.formatError(reason)}`)
         .join('; ');
       throw new Error(`${failed.length} resource(s) failed: ${details}`);
     }
