@@ -4,6 +4,7 @@ import { UIWidget } from './UIWidget';
 import { Renderer } from '../render/Renderer';
 import { TouchPoint } from '../input/Input';
 import { Matrix2D } from '../math/Matrix2D';
+import { Camera } from '../render/Camera';
 
 /** 滚动方向 */
 export type ScrollDirection = 'vertical' | 'horizontal' | 'both';
@@ -32,6 +33,15 @@ export interface ScrollEvent {
   scrollRatioY: number;
   /** 是否正在滚动 */
   isScrolling: boolean;
+}
+
+interface ScrollAnimation {
+  startX: number;
+  startY: number;
+  targetX: number;
+  targetY: number;
+  duration: number;
+  elapsed: number;
 }
 
 /**
@@ -69,6 +79,7 @@ export class ScrollView extends UIWidget {
   private lastTouchX = 0;
   private lastTouchY = 0;
   private touchStartTime = 0;
+  private scrollAnimation: ScrollAnimation | null = null;
 
   constructor(width = 200, height = 300) {
     super();
@@ -85,32 +96,33 @@ export class ScrollView extends UIWidget {
 
   /** 设置滚动位置 */
   setScrollPosition(x: number, y: number): void {
-    this._scrollX = this.clampScrollX(x);
-    this._scrollY = this.clampScrollY(y);
+    this.scrollAnimation = null;
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this._scrollX = this.clampTargetX(x);
+    this._scrollY = this.clampTargetY(y);
     this.notifyScroll();
   }
 
   /** 滚动到指定位置（带动画） */
   scrollTo(x: number, y: number, duration = 0.3): void {
-    const startX = this._scrollX;
-    const startY = this._scrollY;
-    const startTime = Date.now();
+    const targetX = this.clampTargetX(x);
+    const targetY = this.clampTargetY(y);
+    if (duration <= 0) {
+      this.setScrollPosition(targetX, targetY);
+      return;
+    }
 
-    const animate = () => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      const t = Math.min(1, elapsed / duration);
-      const ease = 1 - Math.pow(1 - t, 3); // easeOutCubic
-
-      this._scrollX = startX + (x - startX) * ease;
-      this._scrollY = startY + (y - startY) * ease;
-      this.notifyScroll();
-
-      if (t < 1) {
-        requestAnimationFrame(animate);
-      }
+    this.velocityX = 0;
+    this.velocityY = 0;
+    this.scrollAnimation = {
+      startX: this._scrollX,
+      startY: this._scrollY,
+      targetX,
+      targetY,
+      duration,
+      elapsed: 0,
     };
-
-    animate();
   }
 
   /** 滚动到顶部 */
@@ -170,6 +182,7 @@ export class ScrollView extends UIWidget {
     this.touchStartTime = Date.now();
     this.velocityX = 0;
     this.velocityY = 0;
+    this.scrollAnimation = null;
   }
 
   /** 处理触摸移动 */
@@ -196,9 +209,8 @@ export class ScrollView extends UIWidget {
   }
 
   /** 处理触摸结束 */
-  override onTouchEnd(point: TouchPoint): void {
+  override onTouchEnd(_point: TouchPoint): void {
     this.isDragging = false;
-    void point;
 
     // 计算速度（基于最近的触摸移动）
     const elapsed = (Date.now() - this.touchStartTime) / 1000;
@@ -206,47 +218,23 @@ export class ScrollView extends UIWidget {
       this.velocityX *= 3;
       this.velocityY *= 3;
     }
+  }
 
-    // 启动惯性滚动
-    if (Math.abs(this.velocityX) > 1 || Math.abs(this.velocityY) > 1) {
-      this.startInertia();
-    } else if (this.elastic) {
-      this.startElastic();
-    }
+  override onTouchCancel(): void {
+    this.isDragging = false;
+    this.velocityX = 0;
+    this.velocityY = 0;
   }
 
   /** 每帧更新 */
-  update(dt: number): void {
-    if (this.isDragging) return;
-
-    // 惯性滚动
-    if (Math.abs(this.velocityX) > 0.1 || Math.abs(this.velocityY) > 0.1) {
-      this._scrollX = this.clampScrollX(this._scrollX + this.velocityX * dt * 60);
-      this._scrollY = this.clampScrollY(this._scrollY + this.velocityY * dt * 60);
-
-      this.velocityX *= this.inertiaDecay;
-      this.velocityY *= this.inertiaDecay;
-
-      this.notifyScroll();
+  override update(dt: number): void {
+    if (!this.isDragging) {
+      this.updateScrollAnimation(dt);
+      this.updateInertia(dt);
+      this.updateElastic();
     }
 
-    // 弹性回弹
-    if (this.elastic) {
-      const targetX = this.clampScrollX(this._scrollX);
-      const targetY = this.clampScrollY(this._scrollY);
-
-      if (Math.abs(this._scrollX - targetX) > 0.1) {
-        this._scrollX += (targetX - this._scrollX) * this.elasticStrength;
-      } else {
-        this._scrollX = targetX;
-      }
-
-      if (Math.abs(this._scrollY - targetY) > 0.1) {
-        this._scrollY += (targetY - this._scrollY) * this.elasticStrength;
-      } else {
-        this._scrollY = targetY;
-      }
-    }
+    super.update(dt);
   }
 
   /** 绘制背景和滚动条 */
@@ -258,13 +246,12 @@ export class ScrollView extends UIWidget {
     }
   }
 
-  /** 渲染子组件（应用滚动偏移） */
-  override visit(renderer: Renderer, parentMatrix: Matrix2D): void {
+  /** 渲染子组件（应用滚动偏移，并同步 worldMatrix 以修复命中检测错位） */
+  override visit(renderer: Renderer, parentMatrix: Matrix2D, camera?: Camera): void {
     if (!this.visible || this.alpha <= 0) return;
 
     const ctx = renderer.ctx;
 
-    // 计算世界矩阵
     const wm = this.worldMatrix;
     wm.a = parentMatrix.a;
     wm.b = parentMatrix.b;
@@ -279,12 +266,9 @@ export class ScrollView extends UIWidget {
     const prevAlpha = ctx.globalAlpha;
     ctx.globalAlpha = prevAlpha * this.alpha;
 
-    // 绘制自身
     this.draw(renderer);
 
-    // 裁剪内容区域
     if (this.clipContent) {
-      ctx.save();
       const x = -this.width * this.anchorX;
       const y = -this.height * this.anchorY;
       ctx.beginPath();
@@ -292,24 +276,78 @@ export class ScrollView extends UIWidget {
       ctx.clip();
     }
 
-    // 应用滚动偏移
-    ctx.save();
-    ctx.translate(-this._scrollX, -this._scrollY);
+    // 裁剪区域已落到当前 canvas state 中，重置 transform 后让子节点使用绝对 worldMatrix 渲染。
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const contentMatrix = wm.clone();
+    contentMatrix.applyTransform(-this._scrollX, -this._scrollY, 0, 1, 1);
 
-    // 绘制子组件
     const ordered = this.getChildrenInRenderOrder();
     for (const child of ordered) {
-      child.visit(renderer, wm);
-    }
-
-    ctx.restore();
-
-    if (this.clipContent) {
-      ctx.restore();
+      child.visit(renderer, contentMatrix, camera);
     }
 
     ctx.globalAlpha = prevAlpha;
     ctx.restore();
+  }
+
+  private updateScrollAnimation(dt: number): void {
+    if (!this.scrollAnimation) return;
+
+    const animation = this.scrollAnimation;
+    animation.elapsed += dt;
+    const t = Math.min(1, animation.elapsed / animation.duration);
+    const ease = 1 - Math.pow(1 - t, 3); // easeOutCubic
+
+    this._scrollX = animation.startX + (animation.targetX - animation.startX) * ease;
+    this._scrollY = animation.startY + (animation.targetY - animation.startY) * ease;
+    this.notifyScroll();
+
+    if (t >= 1) {
+      this.scrollAnimation = null;
+    }
+  }
+
+  private updateInertia(dt: number): void {
+    if (this.scrollAnimation) return;
+    if (Math.abs(this.velocityX) <= 0.1 && Math.abs(this.velocityY) <= 0.1) return;
+
+    this._scrollX = this.clampScrollX(this._scrollX + this.velocityX * dt * 60);
+    this._scrollY = this.clampScrollY(this._scrollY + this.velocityY * dt * 60);
+
+    const decay = Math.pow(this.inertiaDecay, dt * 60);
+    this.velocityX *= decay;
+    this.velocityY *= decay;
+
+    if (Math.abs(this.velocityX) <= 0.1) this.velocityX = 0;
+    if (Math.abs(this.velocityY) <= 0.1) this.velocityY = 0;
+
+    this.notifyScroll();
+  }
+
+  private updateElastic(): void {
+    if (!this.elastic || this.scrollAnimation) return;
+
+    const targetX = this.clampTargetX(this._scrollX);
+    const targetY = this.clampTargetY(this._scrollY);
+    let changed = false;
+
+    if (Math.abs(this._scrollX - targetX) > 0.1) {
+      this._scrollX += (targetX - this._scrollX) * this.elasticStrength;
+      changed = true;
+    } else if (this._scrollX !== targetX) {
+      this._scrollX = targetX;
+      changed = true;
+    }
+
+    if (Math.abs(this._scrollY - targetY) > 0.1) {
+      this._scrollY += (targetY - this._scrollY) * this.elasticStrength;
+      changed = true;
+    } else if (this._scrollY !== targetY) {
+      this._scrollY = targetY;
+      changed = true;
+    }
+
+    if (changed) this.notifyScroll();
   }
 
   private drawScrollbar(renderer: Renderer): void {
@@ -347,16 +385,17 @@ export class ScrollView extends UIWidget {
   }
 
   private roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+    const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
     ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
     ctx.closePath();
   }
 
@@ -367,7 +406,7 @@ export class ScrollView extends UIWidget {
       if (x < 0) return x * 0.3;
       if (x > max) return max + (x - max) * 0.3;
     }
-    return Math.max(0, Math.min(this.getMaxScrollX(), x));
+    return this.clampTargetX(x);
   }
 
   private clampScrollY(y: number): number {
@@ -377,63 +416,17 @@ export class ScrollView extends UIWidget {
       if (y < 0) return y * 0.3;
       if (y > max) return max + (y - max) * 0.3;
     }
+    return this.clampTargetY(y);
+  }
+
+  private clampTargetX(x: number): number {
+    if (!this.canScrollX()) return 0;
+    return Math.max(0, Math.min(this.getMaxScrollX(), x));
+  }
+
+  private clampTargetY(y: number): number {
+    if (!this.canScrollY()) return 0;
     return Math.max(0, Math.min(this.getMaxScrollY(), y));
-  }
-
-  private startInertia(): void {
-    const animate = () => {
-      if (this.isDragging) return;
-      if (Math.abs(this.velocityX) < 0.1 && Math.abs(this.velocityY) < 0.1) {
-        if (this.elastic) this.startElastic();
-        return;
-      }
-
-      this._scrollX = this.clampScrollX(this._scrollX + this.velocityX);
-      this._scrollY = this.clampScrollY(this._scrollY + this.velocityY);
-
-      this.velocityX *= this.inertiaDecay;
-      this.velocityY *= this.inertiaDecay;
-
-      this.notifyScroll();
-      requestAnimationFrame(animate);
-    };
-
-    requestAnimationFrame(animate);
-  }
-
-  private startElastic(): void {
-    const targetX = Math.max(0, Math.min(this.getMaxScrollX(), this._scrollX));
-    const targetY = Math.max(0, Math.min(this.getMaxScrollY(), this._scrollY));
-
-    if (Math.abs(this._scrollX - targetX) < 0.1 && Math.abs(this._scrollY - targetY) < 0.1) return;
-
-    const animate = () => {
-      if (this.isDragging) return;
-
-      let done = true;
-
-      if (Math.abs(this._scrollX - targetX) > 0.1) {
-        this._scrollX += (targetX - this._scrollX) * 0.2;
-        done = false;
-      } else {
-        this._scrollX = targetX;
-      }
-
-      if (Math.abs(this._scrollY - targetY) > 0.1) {
-        this._scrollY += (targetY - this._scrollY) * 0.2;
-        done = false;
-      } else {
-        this._scrollY = targetY;
-      }
-
-      this.notifyScroll();
-
-      if (!done) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    requestAnimationFrame(animate);
   }
 
   private notifyScroll(): void {
@@ -444,7 +437,7 @@ export class ScrollView extends UIWidget {
         scrollY: this._scrollY,
         scrollRatioX: ratio.x,
         scrollRatioY: ratio.y,
-        isScrolling: this.isDragging || Math.abs(this.velocityX) > 0.1 || Math.abs(this.velocityY) > 0.1,
+        isScrolling: this.isDragging || this.scrollAnimation !== null || Math.abs(this.velocityX) > 0.1 || Math.abs(this.velocityY) > 0.1,
       });
     }
   }
@@ -464,8 +457,6 @@ export class ListView extends ScrollView {
   renderItem: ((item: unknown, index: number) => UIWidget) | null = null;
   /** 可见项目缓存 */
   private visibleItems = new Map<number, UIWidget>();
-  /** 池化复用 */
-  private pool: UIWidget[] = [];
 
   constructor(width: number, height: number, itemHeight = 40) {
     super(width, height);
@@ -475,9 +466,11 @@ export class ListView extends ScrollView {
 
   /** 设置数据 */
   setData(data: unknown[]): void {
+    this.recycleAllVisibleItems();
     this.data = data;
     this.contentHeight = data.length * this.itemHeight;
-    this.visibleItems.clear();
+    this.contentWidth = this.itemWidth || this.width;
+    this.setScrollPosition(this.getScrollPosition().x, this.getScrollPosition().y);
   }
 
   /** 获取数据 */
@@ -487,7 +480,7 @@ export class ListView extends ScrollView {
 
   /** 刷新列表 */
   refresh(): void {
-    this.visibleItems.clear();
+    this.recycleAllVisibleItems();
     this.updateVisibleItems();
   }
 
@@ -500,39 +493,42 @@ export class ListView extends ScrollView {
   private updateVisibleItems(): void {
     if (!this.renderItem) return;
 
-    const startIndex = Math.floor(this.getScrollPosition().y / this.itemHeight);
+    const startIndex = Math.max(0, Math.floor(this.getScrollPosition().y / this.itemHeight));
     const endIndex = Math.min(
       this.data.length,
       Math.ceil((this.getScrollPosition().y + this.height) / this.itemHeight) + 1
     );
 
-    // 回收不可见项目
-    for (const [index, widget] of this.visibleItems) {
+    // 回收不可见项目。
+    for (const [index, widget] of [...this.visibleItems]) {
       if (index < startIndex || index >= endIndex) {
-        widget.visible = false;
-        this.pool.push(widget);
+        this.removeChild(widget);
         this.visibleItems.delete(index);
       }
     }
 
-    // 创建/复用可见项目
+    // 创建可见项目。
     for (let i = startIndex; i < endIndex; i++) {
       if (this.visibleItems.has(i)) continue;
 
-      let widget = this.pool.pop();
-      if (!widget) {
-        widget = this.renderItem(this.data[i], i);
-        this.addChild(widget);
-      } else {
-        widget = this.renderItem(this.data[i], i);
-      }
-
-      widget.y = i * this.itemHeight;
+      const widget = this.renderItem(this.data[i], i);
+      widget.anchorX = 0;
+      widget.anchorY = 0;
+      widget.x = -this.width * this.anchorX;
+      widget.y = -this.height * this.anchorY + i * this.itemHeight;
       widget.width = this.itemWidth || this.width;
       widget.height = this.itemHeight;
       widget.visible = true;
 
+      this.addChild(widget);
       this.visibleItems.set(i, widget);
     }
+  }
+
+  private recycleAllVisibleItems(): void {
+    for (const widget of this.visibleItems.values()) {
+      this.removeChild(widget);
+    }
+    this.visibleItems.clear();
   }
 }
