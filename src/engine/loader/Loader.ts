@@ -4,6 +4,13 @@ import { Texture } from '../render/Texture';
 import { Audio } from '../audio/Audio';
 import { Logger } from '../utils/Logger';
 
+export type ResourceType = 'texture' | 'audio' | 'json';
+
+export interface ResourceDescriptor {
+  url: string;
+  type: ResourceType;
+}
+
 export class Loader {
   private textureCache = new Map<string, Texture>();
   private jsonCache = new Map<string, unknown>();
@@ -21,7 +28,7 @@ export class Loader {
         this.textureCache.set(url, tex);
         resolve(tex);
       };
-      img.onerror = (err) => reject(err);
+      img.onerror = (err) => reject(new Error(`Texture load failed: ${url}; reason=${this.formatError(err)}`));
       img.src = url;
     });
   }
@@ -39,25 +46,32 @@ export class Loader {
     const cached = this.jsonCache.get(url);
     if (cached) return cached;
     const log = Logger.forModule('Network');
-    log.debug('requestJSON start');
-    const data = await this.platform.requestJSON(url);
-    this.jsonCache.set(url, data);
-    log.debug('requestJSON success');
-    return data;
+    log.debug('requestJSON start url=%s', url);
+    try {
+      const data = await this.platform.requestJSON(url);
+      this.jsonCache.set(url, data);
+      log.debug('requestJSON success url=%s', url);
+      return data;
+    } catch (err) {
+      log.error('requestJSON failed url=%s error=%o', url, err);
+      throw new Error(`JSON load failed: ${url}; reason=${this.formatError(err)}`);
+    }
   }
 
-  async loadAll(resources: Array<{ url: string; type: 'texture' | 'audio' | 'json' }>): Promise<void> {
+  async loadAll(resources: ResourceDescriptor[]): Promise<void> {
     const results = await Promise.allSettled(
-      resources.map((r) => {
-        if (r.type === 'texture') return this.loadTexture(r.url);
-        if (r.type === 'audio') { this.loadAudio(r.url); return Promise.resolve(); }
-        if (r.type === 'json') return this.loadJSON(r.url);
-        return Promise.resolve();
-      })
+      resources.map((resource) => this.loadResource(resource))
     );
-    const failed = results.filter((r) => r.status === 'rejected');
+
+    const failed = results
+      .map((result, index) => ({ result, resource: resources[index] }))
+      .filter((entry): entry is { result: PromiseRejectedResult; resource: ResourceDescriptor } => entry.result.status === 'rejected');
+
     if (failed.length > 0) {
-      throw new Error(`${failed.length} resource(s) failed`);
+      const details = failed
+        .map(({ resource, result }) => `${resource.type}:${resource.url} -> ${this.formatError(result.reason)}`)
+        .join('; ');
+      throw new Error(`${failed.length} resource(s) failed: ${details}`);
     }
   }
 
@@ -99,5 +113,27 @@ export class Loader {
       audios: this.audioCache.size,
       jsons: this.jsonCache.size,
     };
+  }
+
+  private async loadResource(resource: ResourceDescriptor): Promise<void> {
+    if (resource.type === 'texture') {
+      await this.loadTexture(resource.url);
+      return;
+    }
+    if (resource.type === 'audio') {
+      this.loadAudio(resource.url);
+      return;
+    }
+    await this.loadJSON(resource.url);
+  }
+
+  private formatError(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'string') return err;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
   }
 }
