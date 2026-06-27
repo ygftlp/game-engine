@@ -7,7 +7,10 @@ interface TtApi {
   onTouchStart(cb: (e: TtTouchEvent) => void): void;
   onTouchMove(cb: (e: TtTouchEvent) => void): void;
   onTouchEnd(cb: (e: TtTouchEvent) => void): void;
+  onTouchCancel?: (cb: (e: TtTouchEvent) => void) => void;
   request(opts: TtRequestOptions): void;
+  getStorageSync(key: string): unknown;
+  setStorageSync(key: string, value: unknown): void;
 }
 
 interface TtSystemInfo {
