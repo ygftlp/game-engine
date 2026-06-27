@@ -65,6 +65,8 @@ export type UIEventHandler = (event: UIEvent) => void;
 export class UIManager extends Node {
   private input: Input;
   private activeWidget: UIWidget | null = null;
+  private hoveredWidget: UIWidget | null = null;
+  private lastPoint: TouchPoint | null = null;
   private eventHandlers = new Map<string, UIEventHandler[]>();
 
   constructor(input: Input) {
@@ -96,15 +98,9 @@ export class UIManager extends Node {
   /** 触发 UI 事件（带冒泡） */
   private emitUI(event: string, uiEvent: UIEvent): void {
     // 从目标开始冒泡
-    let current = uiEvent.target;
+    let current: UIWidget | null = uiEvent.target;
     while (current && !uiEvent.stopped) {
-      // 检查当前组件是否有 stopPropagation 标记
-      if (current.stopPropagation) {
-        uiEvent.stopPropagation();
-        break;
-      }
-
-      // 触发处理器
+      // 先触发处理器，再按组件标记决定是否继续冒泡。
       const handlers = this.eventHandlers.get(event);
       if (handlers) {
         for (const handler of handlers) {
@@ -113,7 +109,11 @@ export class UIManager extends Node {
         }
       }
 
-      // 冒泡到父节点
+      if (current.stopPropagation) {
+        uiEvent.stopPropagation();
+        break;
+      }
+
       if (uiEvent.hasNext) {
         current = uiEvent.next();
       } else {
@@ -132,28 +132,27 @@ export class UIManager extends Node {
   private handleTouchStart(touches: TouchPoint[]): void {
     if (touches.length === 0) return;
     const point = touches[0];
+    this.lastPoint = point;
     const widget = this.findWidgetAtPoint(point.x, point.y);
     if (widget) {
       this.activeWidget = widget;
       widget.onTouchStart(point);
 
-      // 创建事件并冒泡
       const event = new UIEvent(widget, point);
       this.emitUI('touchstart', event);
     }
   }
 
-  private hoveredWidget: UIWidget | null = null;
-
   private handleTouchMove(touches: TouchPoint[]): void {
     if (touches.length === 0) return;
     const point = touches[0];
+    this.lastPoint = point;
 
     if (this.activeWidget) {
       this.activeWidget.onTouchMove(point);
     }
 
-    // 检测触摸移动时触点下方的 widget，触发 hover 回调
+    // 检测触摸移动时触点下方的 widget，触发 hover 回调。
     const widget = this.findWidgetAtPoint(point.x, point.y);
     if (widget !== this.hoveredWidget) {
       if (this.hoveredWidget) {
@@ -168,15 +167,19 @@ export class UIManager extends Node {
 
   private handleTouchEnd(touches: TouchPoint[]): void {
     if (!this.activeWidget) return;
-    if (touches.length > 0) {
-      const point = touches[0];
-      this.activeWidget.onTouchEnd(point);
 
-      // 创建事件并冒泡
+    // 小游戏 touchend 的 touches 通常为空，必须使用 changedTouches；若平台仍传空，则回退到上一次有效点。
+    const point = touches[0] ?? this.lastPoint;
+    if (point) {
+      this.activeWidget.onTouchEnd(point);
       const event = new UIEvent(this.activeWidget, point);
       this.emitUI('touchend', event);
+    } else {
+      this.activeWidget.onTouchCancel();
     }
+
     this.activeWidget = null;
+    this.lastPoint = null;
     if (this.hoveredWidget) {
       this.hoveredWidget.onHoverEnd();
       this.hoveredWidget = null;
@@ -189,7 +192,7 @@ export class UIManager extends Node {
   }
 
   private findWidgetInNode(node: Node, x: number, y: number): UIWidget | null {
-    // 先检查更高渲染层级的子节点，确保命中顺序与绘制顺序一致
+    // 先检查更高渲染层级的子节点，确保命中顺序与绘制顺序一致。
     const ordered = node.getChildrenInRenderOrder();
     for (let i = ordered.length - 1; i >= 0; i--) {
       const child = ordered[i];
@@ -197,7 +200,7 @@ export class UIManager extends Node {
       if (result) return result;
     }
 
-    // 检查当前节点
+    // 检查当前节点。
     if (node instanceof UIWidget && node.visible && node.interactive && !node.disabled) {
       const local = node.worldMatrix.invertPoint(x, y);
       if (local && this.isPointInWidget(node, local.x, local.y)) {
@@ -230,6 +233,9 @@ export class UIManager extends Node {
     while (this.children.length > 0) {
       this.children[0].removeFromParent();
     }
+    this.activeWidget = null;
+    this.hoveredWidget = null;
+    this.lastPoint = null;
   }
 
   /** 查找指定名称的组件 */
