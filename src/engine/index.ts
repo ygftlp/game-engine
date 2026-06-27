@@ -18,8 +18,12 @@ export type { Rect, Circle } from './collision/Collision';
 export { Vec2 } from './math/Vec2';
 
 // UI 组件
+export { UIWidget } from './ui/UIWidget';
+export { UIManager, UIEvent } from './ui/UIManager';
+export type { UIEventHandler } from './ui/UIManager';
 export { Button } from './ui/Button';
-export { ScrollView } from './ui/ScrollView';
+export { ScrollView, ListView } from './ui/ScrollView';
+export type { ScrollDirection, ScrollbarConfig, ScrollEvent } from './ui/ScrollView';
 
 // 平台接口与各端适配器（按需在各平台入口中导入其一）
 export type { IPlatform } from './platform/Platform';
