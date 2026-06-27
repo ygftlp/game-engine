@@ -24,22 +24,42 @@ export class WxPlatform implements IPlatform {
     return { width: info.windowWidth, height: info.windowHeight, pixelRatio: info.pixelRatio };
   }
 
-  private wrap(handler: PointerHandler) {
+  getStorage(key: string): string | null {
+    try {
+      const value = wx.getStorageSync(key);
+      if (typeof value === 'string') return value;
+      if (value === null || value === undefined) return null;
+      return JSON.stringify(value);
+    } catch {
+      return null;
+    }
+  }
+
+  setStorage(key: string, value: string): void {
+    try {
+      wx.setStorageSync(key, value);
+    } catch {
+      // 存储失败不影响主流程。
+    }
+  }
+
+  private wrap(handler: PointerHandler, source: 'touches' | 'changedTouches' = 'touches') {
     return (e: WxTouchEvent) => {
-      handler(e.touches.map((t) => ({ id: t.identifier, x: t.clientX, y: t.clientY })));
+      handler(e[source].map((t) => ({ id: t.identifier, x: t.clientX, y: t.clientY })));
     };
   }
 
   onPointerStart(handler: PointerHandler): void {
-    wx.onTouchStart(this.wrap(handler));
+    wx.onTouchStart(this.wrap(handler, 'touches'));
   }
 
   onPointerMove(handler: PointerHandler): void {
-    wx.onTouchMove(this.wrap(handler));
+    wx.onTouchMove(this.wrap(handler, 'touches'));
   }
 
   onPointerEnd(handler: PointerHandler): void {
-    wx.onTouchEnd(this.wrap(handler));
+    wx.onTouchEnd(this.wrap(handler, 'changedTouches'));
+    wx.onTouchCancel(this.wrap(handler, 'changedTouches'));
   }
 
   requestJSON(url: string): Promise<unknown> {
