@@ -25,22 +25,42 @@ export class TtPlatform implements IPlatform {
     return { width: info.windowWidth, height: info.windowHeight, pixelRatio: info.pixelRatio };
   }
 
-  private wrap(handler: PointerHandler) {
+  getStorage(key: string): string | null {
+    try {
+      const value = tt.getStorageSync(key);
+      if (typeof value === 'string') return value;
+      if (value === null || value === undefined) return null;
+      return JSON.stringify(value);
+    } catch {
+      return null;
+    }
+  }
+
+  setStorage(key: string, value: string): void {
+    try {
+      tt.setStorageSync(key, value);
+    } catch {
+      // 存储失败不影响主流程。
+    }
+  }
+
+  private wrap(handler: PointerHandler, source: 'touches' | 'changedTouches' = 'touches') {
     return (e: TtTouchEvent) => {
-      handler(e.touches.map((t) => ({ id: t.identifier, x: t.clientX, y: t.clientY })));
+      handler(e[source].map((t) => ({ id: t.identifier, x: t.clientX, y: t.clientY })));
     };
   }
 
   onPointerStart(handler: PointerHandler): void {
-    tt.onTouchStart(this.wrap(handler));
+    tt.onTouchStart(this.wrap(handler, 'touches'));
   }
 
   onPointerMove(handler: PointerHandler): void {
-    tt.onTouchMove(this.wrap(handler));
+    tt.onTouchMove(this.wrap(handler, 'touches'));
   }
 
   onPointerEnd(handler: PointerHandler): void {
-    tt.onTouchEnd(this.wrap(handler));
+    tt.onTouchEnd(this.wrap(handler, 'changedTouches'));
+    tt.onTouchCancel?.(this.wrap(handler, 'changedTouches'));
   }
 
   requestJSON(url: string): Promise<unknown> {
