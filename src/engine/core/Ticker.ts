@@ -17,8 +17,12 @@ export class Ticker {
   ) {}
 
   start(): void {
+    if (this.running) return;
+
     this.running = true;
     this.lastTime = 0;
+    this.accumulator = 0;
+
     const loop = (time: number) => {
       if (!this.running) return;
       const now = time / 1000;
@@ -34,10 +38,13 @@ export class Ticker {
       this.onRender();
       this.platform.requestAnimationFrame(loop);
     };
+
     this.platform.requestAnimationFrame(loop);
   }
 
   stop(): void {
     this.running = false;
+    this.accumulator = 0;
+    this.lastTime = 0;
   }
 }
