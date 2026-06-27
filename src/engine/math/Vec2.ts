@@ -36,8 +36,12 @@ export class Vec2 {
     return Math.sqrt(this.x * this.x + this.y * this.y);
   }
 
-  lengthSq(): number {
+  lengthSquared(): number {
     return this.x * this.x + this.y * this.y;
+  }
+
+  lengthSq(): number {
+    return this.lengthSquared();
   }
 
   normalize(): Vec2 {
@@ -53,12 +57,20 @@ export class Vec2 {
     );
   }
 
-  distanceTo(v: Vec2): number {
+  distance(v: Vec2): number {
     return this.sub(v).length();
   }
 
+  distanceSquared(v: Vec2): number {
+    return this.sub(v).lengthSquared();
+  }
+
+  distanceTo(v: Vec2): number {
+    return this.distance(v);
+  }
+
   distanceToSq(v: Vec2): number {
-    return this.sub(v).lengthSq();
+    return this.distanceSquared(v);
   }
 
   angle(): number {
@@ -82,7 +94,10 @@ export class Vec2 {
     return new Vec2(-this.x, -this.y);
   }
 
-  equals(v: Vec2): boolean {
+  equals(v: Vec2, epsilon?: number): boolean {
+    if (epsilon !== undefined) {
+      return Math.abs(this.x - v.x) <= epsilon && Math.abs(this.y - v.y) <= epsilon;
+    }
     return this.x === v.x && this.y === v.y;
   }
 
@@ -101,4 +116,11 @@ export class Vec2 {
   static lerp(a: Vec2, b: Vec2, t: number): Vec2 {
     return a.lerp(b, t);
   }
+
+  static readonly ZERO = new Vec2(0, 0);
+  static readonly ONE = new Vec2(1, 1);
+  static readonly UP = new Vec2(0, -1);
+  static readonly DOWN = new Vec2(0, 1);
+  static readonly LEFT = new Vec2(-1, 0);
+  static readonly RIGHT = new Vec2(1, 0);
 }

@@ -67,6 +67,11 @@ export class Node {
     if (this.parent) this.parent.removeChild(this);
   }
 
+  getChildrenInRenderOrder(): Node[] {
+    this._sortChildren();
+    return this._sortedAsc;
+  }
+
   /** 挂载组件（组合）。 */
   addComponent<T extends Component>(component: T): T {
     component.node = this;

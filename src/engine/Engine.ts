@@ -51,6 +51,7 @@ export class Engine {
 
   /** 设置初始场景（直接设置，不经过 SceneManager） */
   setScene(scene: Scene): void {
+    scene.engine = this;
     this.currentScene = scene;
     this.sceneManager.clear();
     this.sceneManager.push(scene);

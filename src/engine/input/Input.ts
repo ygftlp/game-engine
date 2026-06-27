@@ -10,10 +10,19 @@ export interface TouchPoint {
 
 export type InputListener = (touches: TouchPoint[]) => void;
 
+export interface InputListenerOptions {
+  persistent?: boolean;
+}
+
+interface ListenerEntry {
+  fn: InputListener;
+  persistent: boolean;
+}
+
 export class Input {
-  private startListeners: InputListener[] = [];
-  private moveListeners: InputListener[] = [];
-  private endListeners: InputListener[] = [];
+  private startListeners: ListenerEntry[] = [];
+  private moveListeners: ListenerEntry[] = [];
+  private endListeners: ListenerEntry[] = [];
 
   constructor(platform: IPlatform, private scale: number) {
     platform.onPointerStart((t) => this.emit(this.startListeners, t));
@@ -21,36 +30,42 @@ export class Input {
     platform.onPointerEnd((t) => this.emit(this.endListeners, t));
   }
 
-  private emit(listeners: InputListener[], raw: Array<{ id: number; x: number; y: number }>): void {
+  private emit(listeners: ListenerEntry[], raw: Array<{ id: number; x: number; y: number }>): void {
     const points = raw.map((p) => ({ id: p.id, x: p.x * this.scale, y: p.y * this.scale }));
-    for (const fn of listeners) fn(points);
+    for (const entry of listeners) entry.fn(points);
   }
 
-  onStart(fn: InputListener): void {
-    this.startListeners.push(fn);
+  onStart(fn: InputListener, options?: InputListenerOptions): void {
+    this.startListeners.push({ fn, persistent: options?.persistent ?? false });
   }
 
   offStart(fn: InputListener): void {
-    const idx = this.startListeners.indexOf(fn);
+    const idx = this.startListeners.findIndex((e) => e.fn === fn);
     if (idx >= 0) this.startListeners.splice(idx, 1);
   }
 
-  onMove(fn: InputListener): void {
-    this.moveListeners.push(fn);
+  onMove(fn: InputListener, options?: InputListenerOptions): void {
+    this.moveListeners.push({ fn, persistent: options?.persistent ?? false });
   }
 
   offMove(fn: InputListener): void {
-    const idx = this.moveListeners.indexOf(fn);
+    const idx = this.moveListeners.findIndex((e) => e.fn === fn);
     if (idx >= 0) this.moveListeners.splice(idx, 1);
   }
 
-  onEnd(fn: InputListener): void {
-    this.endListeners.push(fn);
+  onEnd(fn: InputListener, options?: InputListenerOptions): void {
+    this.endListeners.push({ fn, persistent: options?.persistent ?? false });
   }
 
   offEnd(fn: InputListener): void {
-    const idx = this.endListeners.indexOf(fn);
+    const idx = this.endListeners.findIndex((e) => e.fn === fn);
     if (idx >= 0) this.endListeners.splice(idx, 1);
+  }
+
+  removeAllListeners(): void {
+    this.startListeners = this.startListeners.filter((e) => e.persistent);
+    this.moveListeners = this.moveListeners.filter((e) => e.persistent);
+    this.endListeners = this.endListeners.filter((e) => e.persistent);
   }
 
   clearAll(): void {

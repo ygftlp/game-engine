@@ -4,6 +4,7 @@ import { Camera } from '../render/Camera';
 
 export class Scene extends Node {
   camera: Camera | null = null;
+  engine?: import('../Engine').Engine;
 
   onEnter(): void {}
 

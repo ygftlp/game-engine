@@ -80,7 +80,6 @@ export class WebGLRenderer {
   private defaultShader: ShaderProgram;
   private spriteBatchBuffer: WebGLBuffer;
   private spriteBatchVAO: WebGLBuffer | null = null;
-  private spriteBatchCount = 0;
   private maxBatchSize = 10000;
 
   private batchVertices: Float32Array;
@@ -327,9 +326,39 @@ export class WebGLRenderer {
 
   /** 刷新精灵批处理 */
   flushSpriteBatch(): void {
-    // TODO: 实现 WebGL 精灵批处理刷新 — 需要上传顶点缓冲区并执行 gl.drawElements
-    if (this.spriteBatchCount === 0) return;
-    throw new Error('WebGL sprite batch not yet implemented');
+    if (this.batchVertexCount === 0) return;
+
+    const gl = this.gl;
+    const shader = this.currentShader ?? this.defaultShader;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.spriteBatchBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this.batchVertices.subarray(0, this.batchVertexCount * WebGLRenderer.FLOATS_PER_VERTEX), gl.DYNAMIC_DRAW);
+
+    const stride = WebGLRenderer.VERTEX_STRIDE;
+    if (shader.attribs.a_position !== undefined) {
+      gl.enableVertexAttribArray(shader.attribs.a_position);
+      gl.vertexAttribPointer(shader.attribs.a_position, 3, gl.FLOAT, false, stride, 0);
+    }
+    if (shader.attribs.a_texCoord !== undefined) {
+      gl.enableVertexAttribArray(shader.attribs.a_texCoord);
+      gl.vertexAttribPointer(shader.attribs.a_texCoord, 2, gl.FLOAT, false, stride, 12);
+    }
+    if (shader.attribs.a_color !== undefined) {
+      gl.enableVertexAttribArray(shader.attribs.a_color);
+      gl.vertexAttribPointer(shader.attribs.a_color, 4, gl.FLOAT, false, stride, 20);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+
+    for (const group of this.batchTextureGroups) {
+      group.texture.bind(0);
+      gl.drawElements(gl.TRIANGLES, group.indexCount, gl.UNSIGNED_SHORT, group.indexOffset * 2);
+    }
+
+    this.batchVertexCount = 0;
+    this.batchIndexCount = 0;
+    this.batchTextureGroups.length = 0;
+    this.currentBatchTexture = null;
   }
 
   /** 设置矩阵 uniform */

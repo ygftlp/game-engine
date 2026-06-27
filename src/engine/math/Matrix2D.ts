@@ -52,9 +52,9 @@ export class Matrix2D {
   }
 
   /** 将世界坐标反变换为本矩阵的局部坐标。 */
-  invertPoint(x: number, y: number): { x: number; y: number } {
+  invertPoint(x: number, y: number): { x: number; y: number } | null {
     const det = this.a * this.d - this.b * this.c;
-    if (det === 0) return { x: 0, y: 0 };
+    if (det === 0) return null;
     const id = 1 / det;
     const dx = x - this.e;
     const dy = y - this.f;

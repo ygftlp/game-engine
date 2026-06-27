@@ -1,5 +1,6 @@
 // 渲染器：封装 Canvas 2D context，提供清屏与基础图形/文本绘制能力。
 import { ICanvas } from '../platform/Platform';
+import { Logger } from '../utils/Logger';
 
 export class Renderer {
   readonly ctx: CanvasRenderingContext2D;
@@ -10,6 +11,7 @@ export class Renderer {
     this.width = width;
     this.height = height;
     this.ctx = canvas.getContext('2d');
+    Logger.forModule('Renderer').debug('renderer ready');
   }
 
   clear(color = '#000000'): void {

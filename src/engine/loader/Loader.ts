@@ -2,6 +2,7 @@
 import { IPlatform } from '../platform/Platform';
 import { Texture } from '../render/Texture';
 import { Audio } from '../audio/Audio';
+import { Logger } from '../utils/Logger';
 
 export class Loader {
   private textureCache = new Map<string, Texture>();
@@ -37,9 +38,27 @@ export class Loader {
   async loadJSON(url: string): Promise<unknown> {
     const cached = this.jsonCache.get(url);
     if (cached) return cached;
+    const log = Logger.forModule('Network');
+    log.debug('requestJSON start');
     const data = await this.platform.requestJSON(url);
     this.jsonCache.set(url, data);
+    log.debug('requestJSON success');
     return data;
+  }
+
+  async loadAll(resources: Array<{ url: string; type: 'texture' | 'audio' | 'json' }>): Promise<void> {
+    const results = await Promise.allSettled(
+      resources.map((r) => {
+        if (r.type === 'texture') return this.loadTexture(r.url);
+        if (r.type === 'audio') { this.loadAudio(r.url); return Promise.resolve(); }
+        if (r.type === 'json') return this.loadJSON(r.url);
+        return Promise.resolve();
+      })
+    );
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length > 0) {
+      throw new Error(`${failed.length} resource(s) failed`);
+    }
   }
 
   unloadTexture(url: string): void {
