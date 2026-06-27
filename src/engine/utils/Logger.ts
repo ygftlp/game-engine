@@ -1,15 +1,19 @@
-// 日志工具：支持分级过滤、异步多端输出与调试面板。
-import type { IPlatform } from '../platform/Platform';
+// 日志工具：支持分级过滤、异步输出、可选持久化与调试面板。
 
-type LoggerPlatform = Pick<IPlatform, 'setStorage' | 'getStorage'>;
 type ConsoleMethod = 'debug' | 'info' | 'warn' | 'error';
+
 type RenderTarget = {
   ctx: CanvasRenderingContext2D;
   width: number;
   height: number;
 };
 
-const COMPILE_TIME_DEV = __DEV__;
+export interface LoggerPlatform {
+  getStorage(key: string): string | null | undefined;
+  setStorage(key: string, value: string): void;
+}
+
+const COMPILE_TIME_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
 
 export enum LogLevel {
   DEBUG = 10,
@@ -120,7 +124,6 @@ class ConsoleLogSink implements LogSink {
     for (const entry of entries) {
       const method = this.methodFor(entry.level);
       const output = entry.stack ? `${entry.formatted}\n${entry.stack}` : entry.formatted;
-      // eslint-disable-next-line no-console
       console[method](output);
     }
   }
@@ -134,14 +137,18 @@ class ConsoleLogSink implements LogSink {
 }
 
 class StorageLogFileSink implements LogSink {
-  private cache: string;
+  private cache = '';
 
   constructor(
     private readonly platform: LoggerPlatform,
     private readonly storageKey: string,
     private readonly maxChars: number
   ) {
-    this.cache = platform.getStorage(storageKey) ?? '';
+    try {
+      this.cache = platform.getStorage(storageKey) ?? '';
+    } catch {
+      this.cache = '';
+    }
   }
 
   write(entries: LogEntry[]): void {
@@ -151,11 +158,19 @@ class StorageLogFileSink implements LogSink {
     if (this.cache.length > this.maxChars) {
       this.cache = this.cache.slice(this.cache.length - this.maxChars);
     }
-    this.platform.setStorage(this.storageKey, this.cache);
+    this.persist();
   }
 
   dispose(): void {
-    this.platform.setStorage(this.storageKey, this.cache);
+    this.persist();
+  }
+
+  private persist(): void {
+    try {
+      this.platform.setStorage(this.storageKey, this.cache);
+    } catch {
+      // 存储不可用时不影响游戏主流程。
+    }
   }
 }
 
@@ -375,9 +390,7 @@ export class Logger {
   }
 
   private static shouldLog(level: LogLevel): boolean {
-    if (level === LogLevel.DEBUG && !Logger.config.development) {
-      return false;
-    }
+    if (level === LogLevel.DEBUG && !Logger.config.development) return false;
     return level >= Logger.config.level && level < LogLevel.SILENT;
   }
 
@@ -397,13 +410,7 @@ export class Logger {
       Logger.sinks.push(new ConsoleLogSink());
     }
     if (Logger.config.file.enabled && Logger.platform) {
-      Logger.sinks.push(
-        new StorageLogFileSink(
-          Logger.platform,
-          Logger.config.file.storageKey,
-          Logger.config.file.maxChars
-        )
-      );
+      Logger.sinks.push(new StorageLogFileSink(Logger.platform, Logger.config.file.storageKey, Logger.config.file.maxChars));
     }
     if (Logger.config.panel.enabled) {
       Logger.debugPanelSink = new DebugPanelSink(Logger.config.panel);
@@ -432,9 +439,7 @@ export class Logger {
 
   private static formatMessage(message: string | LogMessageFactory, args: unknown[]): string {
     const source = typeof message === 'function' ? message() : message;
-    if (typeof source === 'string') {
-      return Logger.formatTemplate(source, args);
-    }
+    if (typeof source === 'string') return Logger.formatTemplate(source, args);
     return [source, ...args]
       .map((item) => Logger.serialize(item, Logger.config.serializerDepth, new Set<unknown>()))
       .join(' ');
@@ -467,19 +472,10 @@ export class Logger {
     if (value === null) return 'null';
     if (value === undefined) return 'undefined';
     if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-      return String(value);
-    }
-    if (typeof value === 'function') {
-      const fn = value as { name?: string };
-      return `[Function ${fn.name || 'anonymous'}]`;
-    }
-    if (value instanceof Error) {
-      return value.stack || value.message;
-    }
-    if (depth <= 0) {
-      return Array.isArray(value) ? '[Array]' : '[Object]';
-    }
+    if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+    if (typeof value === 'function') return `[Function ${(value as { name?: string }).name || 'anonymous'}]`;
+    if (value instanceof Error) return value.stack || value.message;
+    if (depth <= 0) return Array.isArray(value) ? '[Array]' : '[Object]';
     if (seen.has(value)) return '[Circular]';
     seen.add(value);
 
