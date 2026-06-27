@@ -19,12 +19,11 @@ export class Engine {
   readonly sceneManager: SceneManager;
 
   private ticker: Ticker;
-  private currentScene: Scene | null = null;
 
   constructor(platform: IPlatform) {
     this.platform = platform;
     const screen = platform.getScreenInfo();
-    
+
     // 使用物理像素尺寸
     this.width = screen.width * screen.pixelRatio;
     this.height = screen.height * screen.pixelRatio;
@@ -42,23 +41,25 @@ export class Engine {
       (dt) => this.update(dt),
       () => this.render()
     );
-
-    // 监听场景切换，同步 currentScene
-    this.sceneManager.onChange((_old, next) => {
-      this.currentScene = next;
-    });
   }
 
   /** 设置初始场景（直接设置，不经过 SceneManager） */
   setScene(scene: Scene): void {
     scene.engine = this;
-    this.currentScene = scene;
     this.sceneManager.clear();
     this.sceneManager.push(scene);
   }
 
   start(): void {
     this.ticker.start();
+  }
+
+  stop(): void {
+    this.ticker.stop();
+  }
+
+  get currentScene(): Scene | null {
+    return this.sceneManager.current();
   }
 
   private update(dt: number): void {
