@@ -6,6 +6,9 @@ import { Matrix2D } from '../math/Matrix2D';
 import { Camera } from '../render/Camera';
 
 export class Node {
+  /** 可选节点名称，用于 UI / 场景树查找。 */
+  name = '';
+
   x = 0;
   y = 0;
   rotation = 0; // 弧度
@@ -169,7 +172,7 @@ export class Node {
       if (hit) return hit;
     }
     const local = this.worldMatrix.invertPoint(worldX, worldY);
-    if (this.containsLocalPoint(local.x, local.y)) return this;
+    if (local && this.containsLocalPoint(local.x, local.y)) return this;
     return null;
   }
 }
