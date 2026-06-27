@@ -11,6 +11,8 @@ interface WxApi {
   onTouchEnd(cb: (e: WxTouchEvent) => void): void;
   onTouchCancel(cb: (e: WxTouchEvent) => void): void;
   request(opts: WxRequestOptions): void;
+  getStorageSync(key: string): unknown;
+  setStorageSync(key: string, value: unknown): void;
   getFileSystemManager(): unknown;
 }
 
