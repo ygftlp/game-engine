@@ -38,12 +38,10 @@ async function run() {
     format: 'cjs',
   });
 
-  // 3. 生成TypeScript类型声明
-  try {
-    execSync('tsc --emitDeclarationOnly --outDir dist/types', { stdio: 'inherit' });
-  } catch (e) {
-    console.warn('TypeScript declaration generation failed:', e.message);
-  }
+  // 3. 生成TypeScript类型声明。失败时应直接让发布构建失败，避免产出缺失类型的包。
+  execSync('tsc --declaration --emitDeclarationOnly --outDir dist/types', { stdio: 'inherit' });
+  // tsc 会按 rootDir 输出 dist/types/engine/index.d.ts；这里补一个包入口声明，匹配 package.json 的 types 字段。
+  writeFileSync('dist/types/index.d.ts', "export * from './engine';\n");
 
   // 4. 生成package.json用于发布
   const pkg = {
