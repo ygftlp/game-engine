@@ -60,5 +60,10 @@ export interface IPlatform {
   onPointerEnd(handler: PointerHandler): void;
   /** 请求 JSON（小游戏用 request，H5 用 fetch）。 */
   requestJSON(url: string): Promise<unknown>;
+  /** 请求下一帧。 */
   requestAnimationFrame(cb: (time: number) => void): number;
+  /** 可选同步存储读取；小游戏端映射 storage，H5 映射 localStorage。 */
+  getStorage?(key: string): string | null;
+  /** 可选同步存储写入；失败时平台实现应自行吞掉异常，避免影响主流程。 */
+  setStorage?(key: string, value: string): void;
 }
