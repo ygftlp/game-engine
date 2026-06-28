@@ -250,7 +250,7 @@ export function createFillLayout(margin = 10): LayoutContainer {
   const container = new LayoutContainer();
   const solver = new ConstraintSolver();
   container.setConstraintLayout(solver);
-  constraintMargins(container, margin, margin, margin, margin);
+  solver.setConstraints(container, constraintMargins(margin, margin, margin, margin));
   return container;
 }
 
