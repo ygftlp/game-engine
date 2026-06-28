@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "lite-game-engine": "file:../../"
+    "lite-game-engine": "file:../../packages/game-engine"
   },
   "devDependencies": {
     "esbuild": "^0.21.0",
