@@ -35,6 +35,13 @@ src/
   game/          示例游戏（三端复用同一份）
   entries/       各平台入口（main.wx.ts / main.tt.ts / main.h5.ts）
   web/           H5 的 index.html
+docs/
+  API.md
+  AI_ENGINE_USAGE.md
+templates/
+  wx-game-template/
+examples/
+  shooter/
 ```
 
 ## 安装与构建
@@ -53,6 +60,48 @@ npm test
 - H5：`dist/h5/index.html`、`dist/h5/game.h5.js`
 
 详细发布说明见 [`docs/Release.md`](docs/Release.md)。
+
+## AI 使用本引擎开发游戏
+
+如果你的本地有多个游戏项目，建议把本仓库作为统一引擎底座，具体游戏项目只依赖并调用公开 API。
+
+AI 开发业务游戏时优先阅读：
+
+1. [`docs/AI_ENGINE_USAGE.md`](docs/AI_ENGINE_USAGE.md)
+2. [`docs/API.md`](docs/API.md)
+3. [`templates/wx-game-template`](templates/wx-game-template)
+4. [`examples/shooter`](examples/shooter)
+
+推荐工作区结构：
+
+```text
+workspace/
+  packages/
+    game-engine/
+  games/
+    space-shooter/
+    parkour-game/
+    puzzle-game/
+```
+
+业务游戏通过本地依赖使用引擎：
+
+```json
+{
+  "dependencies": {
+    "lite-game-engine": "file:../../packages/game-engine"
+  }
+}
+```
+
+AI 规则：
+
+- 不要在业务项目里重写 `Engine` / `Scene` / `Renderer` / `Input`。
+- 不要直接访问 `wx` / `tt` / `document`。
+- 新游戏对象写在业务项目的 `src/objects/`。
+- 新页面写成 `Scene`。
+- 新 UI 优先使用 `UIManager`、`Button`、`ScrollView`。
+- 碰撞、资源、输入优先使用引擎公开 API。
 
 ## 最小示例
 
@@ -128,3 +177,5 @@ src/engine/skill/
 ## 示例场景
 
 `src/game/DemoScene.ts` 是一个可拖动方块 Demo：玩家方块与目标方块发生 AABB 碰撞时变色。它用于验证三端输入、渲染与碰撞链路。
+
+`examples/shooter` 是给 AI 参考的射击游戏业务结构示例，展示如何用引擎 API 组织玩家、敌人、子弹、HUD 和碰撞逻辑。
