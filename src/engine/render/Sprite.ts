@@ -30,7 +30,7 @@ export class Sprite extends Node {
   }
 
   protected draw(renderer: Renderer): void {
-    if (!this.texture) return;
+    if (!this.texture || !this.texture.loaded) return;
     const ox = -this.width * this.anchorX;
     const oy = -this.height * this.anchorY;
     const img = this.texture.image as unknown as CanvasImageSource;
