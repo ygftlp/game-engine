@@ -48,8 +48,7 @@ export class Loader {
   }
 
   async loadJSON(url: string): Promise<unknown> {
-    const cached = this.jsonCache.get(url);
-    if (cached) return cached;
+    if (this.jsonCache.has(url)) return this.jsonCache.get(url);
     const log = Logger.forModule('Network');
     log.debug('requestJSON start url=%s', url);
     try {
