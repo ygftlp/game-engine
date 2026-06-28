@@ -39,6 +39,9 @@ Pool
 
 ```ts
 Renderer
+Camera
+CameraConfig
+CameraType
 Sprite
 TextNode
 Texture
@@ -65,6 +68,10 @@ Collision
 Rect
 Circle
 Vec2
+Matrix2D
+Vec3
+Mat4
+Quat
 ```
 
 ### UI
@@ -153,17 +160,6 @@ class Scene extends Node {
 }
 ```
 
-示例：
-
-```ts
-class GameScene extends Scene {
-  update(dt: number): void {
-    super.update(dt);
-    // 每帧逻辑
-  }
-}
-```
-
 ## Node
 
 `Node` 是基础节点，支持树状结构、变换、透明度、层级、组件挂载和命中检测。
@@ -216,19 +212,51 @@ class Renderer {
 }
 ```
 
-### Sprite
+### Camera
 
 ```ts
-class Sprite extends Node {
-  frame: TextureFrame | null;
-  texture: Texture | null;
+type CameraType = '2d' | '3d';
 
-  setTexture(texture: Texture, frame?: TextureFrame | null): void;
-  setFrame(frame: TextureFrame): void;
+interface CameraConfig {
+  type?: CameraType;
+  viewportWidth: number;
+  viewportHeight: number;
+  near?: number;
+  far?: number;
+  fov?: number;
+}
+
+class Camera {
+  readonly type: CameraType;
+  position: Vec3;
+  target: Vec3;
+  up: Vec3;
+  viewportWidth: number;
+  viewportHeight: number;
+  zoom: number;
+  rotation: number;
+  followTarget: Node | null;
+  followSmooth: number;
+  followOffset: Vec3;
+
+  constructor(config: CameraConfig);
+  updateProjection(): void;
+  updateView(): void;
+  update(dt: number): void;
+  setFollowTarget(target: Node | null, smooth?: number, offsetX?: number, offsetY?: number): void;
+  getViewMatrix(): Mat4;
+  getProjectionMatrix(): Mat4;
+  getVPMatrix(): Mat4;
+  screenToWorld(screenX: number, screenY: number): { x: number; y: number };
+  worldToScreen(worldX: number, worldY: number): { x: number; y: number };
+  isVisible(x: number, y: number, width: number, height: number): boolean;
+  setZoom(zoom: number): void;
+  panTo(x: number, y: number, smooth?: number): void;
+  shake(intensity: number, duration: number): void;
 }
 ```
 
-### Texture
+### Sprite / Texture
 
 ```ts
 interface TextureFrame {
@@ -244,6 +272,15 @@ class Texture {
   readonly width: number;
   readonly height: number;
   dispose(): void;
+}
+
+class Sprite extends Node {
+  frame: TextureFrame | null;
+  texture: Texture | null;
+
+  constructor(texture?: Texture | null);
+  setTexture(texture: Texture, frame?: TextureFrame | null): void;
+  setFrame(frame: TextureFrame): void;
 }
 ```
 
@@ -299,7 +336,7 @@ class Loader {
 }
 ```
 
-`loadAll()` 失败时会带上资源类型、URL 和错误原因，便于线上定位。
+`loadJSON()` 会缓存 `false`、`null`、`0`、空字符串等合法 JSON 值，避免重复请求。
 
 ## 音频 API
 
@@ -343,6 +380,16 @@ class Collision {
 }
 ```
 
+## 数学 API
+
+```ts
+class Vec2 { /* 2D 向量 */ }
+class Matrix2D { /* 2D 仿射矩阵，用于节点世界矩阵和命中检测 */ }
+class Vec3 { /* 3D 向量 */ }
+class Mat4 { /* 4x4 矩阵 */ }
+class Quat { /* 四元数 */ }
+```
+
 ## UI API
 
 ### UIManager
@@ -361,18 +408,6 @@ class UIManager extends Node {
   update(dt: number): void;
   render(renderer: Renderer): void;
 }
-```
-
-示例：
-
-```ts
-const ui = new UIManager(engine.input);
-const button = new Button('开始', 160, 56);
-button.x = engine.width / 2;
-button.y = engine.height / 2;
-button.onClickCallback = () => console.log('click');
-ui.addWidget(button);
-engine.currentScene?.addChild(ui);
 ```
 
 ### UIWidget
@@ -466,6 +501,8 @@ interface IPlatform {
   onPointerEnd(handler: PointerHandler): void;
   requestJSON(url: string): Promise<unknown>;
   requestAnimationFrame(cb: (time: number) => void): number;
+  getStorage?(key: string): string | null;
+  setStorage?(key: string, value: string): void;
 }
 ```
 
@@ -500,15 +537,6 @@ class Logger {
   static flush(): Promise<void>;
   static dispose(): void;
 }
-```
-
-示例：
-
-```ts
-import { Logger, LogLevel } from 'lite-game-engine';
-
-Logger.setLevel(LogLevel.INFO);
-Logger.forModule('Game').info('ready');
 ```
 
 ## Skill / 技能系统
