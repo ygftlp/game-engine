@@ -47,15 +47,15 @@ export class Loader {
     return audio;
   }
 
-  async loadJSON(url: string): Promise<unknown> {
-    if (this.jsonCache.has(url)) return this.jsonCache.get(url);
+  async loadJSON<T = unknown>(url: string): Promise<T> {
+    if (this.jsonCache.has(url)) return this.jsonCache.get(url) as T;
     const log = Logger.forModule('Network');
     log.debug('requestJSON start url=%s', url);
     try {
       const data = await this.platform.requestJSON(url);
       this.jsonCache.set(url, data);
       log.debug('requestJSON success url=%s', url);
-      return data;
+      return data as T;
     } catch (err) {
       log.error('requestJSON failed url=%s error=%o', url, err);
       throw new Error(`JSON load failed: ${url}; reason=${this.formatError(err)}`);
