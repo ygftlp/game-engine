@@ -25,6 +25,11 @@ export { Vec3, Mat4, Quat } from './math/Mat4';
 export { Logger, LogLevel } from './utils/Logger';
 export type { LogEntry, LoggerConfig, LoggerPlatform } from './utils/Logger';
 
+// 技能系统
+export { Skill } from './skill/Skill';
+export type { SkillConfig, SkillEffect, SkillState } from './skill/Skill';
+export { SkillManager } from './skill/SkillManager';
+
 // UI 组件
 export { UIWidget } from './ui/UIWidget';
 export type { UIAlign, UIImageStretch, UIState, UIVAlign } from './ui/UIWidget';
