@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-当前仓库定位为**平台无关的 2D 游戏引擎 + 三端 Demo**，不是完整业务游戏项目。它提供主循环、场景树、渲染、输入、资源、音频、碰撞、UI 与平台适配能力，业务游戏可以基于这些 API 继续扩展。
+当前仓库定位为**平台无关的 2D 游戏引擎 + 三端 Demo**，不是完整业务游戏项目。它提供主循环、场景树、渲染、输入、资源、音频、碰撞、UI、基础技能系统与平台适配能力，业务游戏可以基于这些 API 继续扩展。
 
 ## 设计原则：平台无关
 
@@ -12,7 +12,7 @@
 
 ### 三层架构
 
-- **引擎核心层**：`Engine`、`Node`、`Scene`、`Renderer`、`Input`、`Loader`、`Audio`、`Collision`、`UIManager` 等。
+- **引擎核心层**：`Engine`、`Node`、`Scene`、`Renderer`、`Input`、`Loader`、`Audio`、`Collision`、`UIManager`、`SkillManager` 等。
 - **平台适配层**：`WxPlatform`、`TtPlatform`、`H5Platform`。
 - **游戏层 + 入口**：游戏逻辑用引擎 API 编写，入口按平台注入适配器。
 
@@ -29,6 +29,7 @@ src/
     audio/       音频
     collision/   碰撞检测
     math/        数学工具
+    skill/       基础技能模型与技能管理器
     ui/          UI 组件与 UI 事件管理
     utils/       日志等工具
     index.ts     引擎统一入口
@@ -159,16 +160,15 @@ await engine.loader.loadAll([
 
 ## Skill / 技能系统状态
 
-当前仓库尚未实现 Skill / 技能系统，因此本次未新增 Skill 代码。后续如果要支持战机技能、冷却、触发器、Buff、技能特效，建议新增独立模块：
+当前仓库已提供基础 Skill 能力：
 
 ```text
 src/engine/skill/
   Skill.ts
   SkillManager.ts
-  SkillCooldown.ts
-  SkillEffect.ts
-  SkillTrigger.ts
 ```
+
+已支持技能注册、施放判断、施放、施法时间、持续时间、冷却更新、冷却进度读取。后续如果要支持更完整的 Buff、触发器、技能特效、目标选择和资源消耗，可以继续扩展独立模块。
 
 ## 复用与扩展
 
