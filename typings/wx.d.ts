@@ -13,6 +13,7 @@ interface WxApi {
   request(opts: WxRequestOptions): void;
   getStorageSync(key: string): unknown;
   setStorageSync(key: string, value: unknown): void;
+  removeStorageSync(key: string): void;
   getFileSystemManager(): unknown;
   reportAnalytics(eventName: string, data?: Record<string, unknown>): void;
 }
