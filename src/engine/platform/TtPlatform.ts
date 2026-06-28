@@ -44,6 +44,14 @@ export class TtPlatform implements IPlatform {
     }
   }
 
+  removeStorage(key: string): void {
+    try {
+      tt.removeStorageSync(key);
+    } catch {
+      // 存储失败不影响主流程。
+    }
+  }
+
   private wrap(handler: PointerHandler, source: 'touches' | 'changedTouches' = 'touches') {
     return (e: TtTouchEvent) => {
       handler(e[source].map((t) => ({ id: t.identifier, x: t.clientX, y: t.clientY })));
