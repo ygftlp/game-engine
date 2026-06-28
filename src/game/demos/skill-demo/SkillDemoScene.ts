@@ -4,11 +4,9 @@ import {
 } from '../../../engine';
 
 // 技能状态枚举
-enum SkillState {
+const enum SkillState {
   Ready = 'ready',
-  Casting = 'casting',
   Cooldown = 'cooldown',
-  Active = 'active',
 }
 
 // 技能Demo场景
@@ -200,11 +198,10 @@ export class SkillDemoScene extends Scene {
   protected draw(renderer: any): void {
     const ctx = renderer.ctx;
     const w = 400;
-    const h = 667;
 
     // 背景
     ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(0, 0, w, 667);
 
     // 敌人
     for (const enemy of this.enemies) {
