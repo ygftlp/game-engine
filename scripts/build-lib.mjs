@@ -1,5 +1,5 @@
 // esbuild 构建脚本：生成可被外部项目引用的库格式
-import { build, context } from 'esbuild';
+import { build } from 'esbuild';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
