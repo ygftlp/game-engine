@@ -11,6 +11,7 @@ interface TtApi {
   request(opts: TtRequestOptions): void;
   getStorageSync(key: string): unknown;
   setStorageSync(key: string, value: unknown): void;
+  removeStorageSync(key: string): void;
   reportAnalytics(eventName: string, data?: Record<string, unknown>): void;
 }
 
