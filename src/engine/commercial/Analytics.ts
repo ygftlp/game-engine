@@ -1,4 +1,5 @@
-// 平台统计SDK适配：统一的数据上报接口，支持微信、抖音、H5平台。
+// 统计抽象：引擎只提供统一事件模型和管理器，不直接依赖 wx / tt 等平台全局对象。
+// 具体平台的数据上报函数由业务项目或平台插件注入。
 import { Logger } from '../utils/Logger';
 
 export interface AnalyticsEvent {
@@ -11,6 +12,15 @@ export interface UserProperties {
   [key: string]: string | number | boolean;
 }
 
+export type AnalyticsReporter = (eventName: string, data?: Record<string, unknown>) => void;
+
+export interface AnalyticsReporterConfig {
+  userPropertyEventName?: string;
+  userLoginEventName?: string;
+  sessionStartEventName?: string;
+  sessionEndEventName?: string;
+}
+
 export abstract class AnalyticsAdapter {
   abstract trackEvent(event: AnalyticsEvent): void;
   abstract setUserProperties(properties: UserProperties): void;
@@ -20,142 +30,154 @@ export abstract class AnalyticsAdapter {
 }
 
 const analyticsLogger = Logger.forModule('Analytics');
+const DEFAULT_REPORTER_CONFIG: Required<AnalyticsReporterConfig> = {
+  userPropertyEventName: 'user_property',
+  userLoginEventName: 'user_login',
+  sessionStartEventName: 'session_start',
+  sessionEndEventName: 'session_end',
+};
 
-/** 微信统计适配器 */
-export class WxAnalyticsAdapter extends AnalyticsAdapter {
+/** 空统计适配器：用于开发、测试或未接入统计 SDK 的场景。 */
+export class NoopAnalyticsAdapter extends AnalyticsAdapter {
+  trackEvent(_event: AnalyticsEvent): void {
+    return;
+  }
+
+  setUserProperties(_properties: UserProperties): void {
+    return;
+  }
+
+  setUserId(_userId: string): void {
+    return;
+  }
+
+  startSession(): void {
+    return;
+  }
+
+  endSession(): void {
+    return;
+  }
+}
+
+/**
+ * 注入式统计适配器。
+ *
+ * 微信小游戏业务层示例：
+ * ```ts
+ * new ReportAnalyticsAdapter((name, data) => wx.reportAnalytics(name, data ?? {}));
+ * ```
+ *
+ * 抖音小游戏业务层示例：
+ * ```ts
+ * new ReportAnalyticsAdapter((name, data) => tt.reportAnalytics(name, data ?? {}));
+ * ```
+ */
+export class ReportAnalyticsAdapter extends AnalyticsAdapter {
+  private readonly config: Required<AnalyticsReporterConfig>;
+
+  constructor(private readonly reporter: AnalyticsReporter, config: AnalyticsReporterConfig = {}) {
+    super();
+    this.config = { ...DEFAULT_REPORTER_CONFIG, ...config };
+  }
+
   trackEvent(event: AnalyticsEvent): void {
-    if (typeof wx === 'undefined') return;
-    
-    // 微信小游戏数据上报
-    wx.reportAnalytics(event.name, event.params || {});
+    this.reporter(event.name, event.params ?? {});
   }
 
   setUserProperties(properties: UserProperties): void {
-    if (typeof wx === 'undefined') return;
-    
-    // 微信用户属性上报
-    Object.keys(properties).forEach(key => {
-      wx.reportAnalytics('user_property', {
+    Object.keys(properties).forEach((key) => {
+      this.reporter(this.config.userPropertyEventName, {
         property_name: key,
-        property_value: String(properties[key])
+        property_value: String(properties[key]),
       });
     });
   }
 
   setUserId(userId: string): void {
-    if (typeof wx === 'undefined') return;
-    
-    wx.reportAnalytics('user_login', { user_id: userId });
+    this.reporter(this.config.userLoginEventName, { user_id: userId });
   }
 
   startSession(): void {
-    if (typeof wx === 'undefined') return;
-    
-    wx.reportAnalytics('session_start', { timestamp: Date.now() });
+    this.reporter(this.config.sessionStartEventName, { timestamp: Date.now() });
   }
 
   endSession(): void {
-    if (typeof wx === 'undefined') return;
-    
-    wx.reportAnalytics('session_end', { timestamp: Date.now() });
+    this.reporter(this.config.sessionEndEventName, { timestamp: Date.now() });
   }
 }
 
-/** 抖音统计适配器 */
-export class TtAnalyticsAdapter extends AnalyticsAdapter {
-  trackEvent(event: AnalyticsEvent): void {
-    if (typeof tt === 'undefined') return;
-    
-    tt.reportAnalytics(event.name, event.params || {});
-  }
+/**
+ * 微信统计适配器外壳。
+ *
+ * 注意：引擎不直接调用 `wx.reportAnalytics`。业务项目需要显式注入平台实现：
+ * ```ts
+ * new WxAnalyticsAdapter((name, data) => wx.reportAnalytics(name, data ?? {}));
+ * ```
+ */
+export class WxAnalyticsAdapter extends ReportAnalyticsAdapter {}
 
-  setUserProperties(properties: UserProperties): void {
-    if (typeof tt === 'undefined') return;
-    
-    Object.keys(properties).forEach(key => {
-      tt.reportAnalytics('user_property', {
-        property_name: key,
-        property_value: String(properties[key])
-      });
-    });
-  }
+/**
+ * 抖音统计适配器外壳。
+ *
+ * 注意：引擎不直接调用 `tt.reportAnalytics`。业务项目需要显式注入平台实现：
+ * ```ts
+ * new TtAnalyticsAdapter((name, data) => tt.reportAnalytics(name, data ?? {}));
+ * ```
+ */
+export class TtAnalyticsAdapter extends ReportAnalyticsAdapter {}
 
-  setUserId(userId: string): void {
-    if (typeof tt === 'undefined') return;
-    
-    tt.reportAnalytics('user_login', { user_id: userId });
-  }
-
-  startSession(): void {
-    if (typeof tt === 'undefined') return;
-    
-    tt.reportAnalytics('session_start', { timestamp: Date.now() });
-  }
-
-  endSession(): void {
-    if (typeof tt === 'undefined') return;
-    
-    tt.reportAnalytics('session_end', { timestamp: Date.now() });
-  }
-}
-
-/** H5统计适配器（支持自定义上报） */
-export class H5AnalyticsAdapter extends AnalyticsAdapter {
-  private apiEndpoint: string;
+/** HTTP 统计适配器：适合 H5 或自建服务端上报。 */
+export class HttpAnalyticsAdapter extends AnalyticsAdapter {
   private buffer: AnalyticsEvent[] = [];
-  private flushInterval: number;
   private timer: ReturnType<typeof setInterval> | null = null;
   private maxBufferSize = 100;
 
-  constructor(apiEndpoint: string, flushInterval = 5000) {
+  constructor(private readonly apiEndpoint: string, private readonly flushInterval = 5000) {
     super();
-    this.apiEndpoint = apiEndpoint;
-    this.flushInterval = flushInterval;
   }
 
   trackEvent(event: AnalyticsEvent): void {
     this.buffer.push({
       ...event,
-      timestamp: event.timestamp || Date.now()
+      timestamp: event.timestamp ?? Date.now(),
     });
 
-    // 缓冲满时立即上报
     if (this.buffer.length >= 20) {
-      this.flush();
+      void this.flush();
     }
   }
 
   setUserProperties(properties: UserProperties): void {
     this.trackEvent({
       name: 'user_properties',
-      params: properties
+      params: properties,
     });
   }
 
   setUserId(userId: string): void {
     this.trackEvent({
       name: 'user_login',
-      params: { user_id: userId }
+      params: { user_id: userId },
     });
   }
 
   startSession(): void {
     this.trackEvent({
       name: 'session_start',
-      params: { timestamp: Date.now() }
+      params: { timestamp: Date.now() },
     });
 
-    // 启动定时上报
-    this.timer = setInterval(() => this.flush(), this.flushInterval);
+    this.timer = setInterval(() => void this.flush(), this.flushInterval);
   }
 
   endSession(): void {
     this.trackEvent({
       name: 'session_end',
-      params: { timestamp: Date.now() }
+      params: { timestamp: Date.now() },
     });
 
-    this.flush();
+    void this.flush();
 
     if (this.timer) {
       clearInterval(this.timer);
@@ -174,11 +196,10 @@ export class H5AnalyticsAdapter extends AnalyticsAdapter {
       await fetch(`${this.apiEndpoint}/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ events })
+        body: JSON.stringify({ events }),
       });
     } catch (err) {
-      analyticsLogger.error('H5AnalyticsAdapter: flush failed error=%o', err);
-      // 失败时重新加入缓冲（限制最大缓冲区大小）
+      analyticsLogger.error('HttpAnalyticsAdapter: flush failed error=%o', err);
       this.buffer.unshift(...events);
       if (this.buffer.length > this.maxBufferSize) {
         this.buffer = this.buffer.slice(0, this.maxBufferSize);
@@ -187,14 +208,14 @@ export class H5AnalyticsAdapter extends AnalyticsAdapter {
   }
 }
 
+/** 兼容旧命名：H5 场景可继续使用 H5AnalyticsAdapter。 */
+export class H5AnalyticsAdapter extends HttpAnalyticsAdapter {}
+
 /** 统计管理器 */
 export class AnalyticsManager {
-  private adapter: AnalyticsAdapter;
   private sessionStartTime = 0;
 
-  constructor(adapter: AnalyticsAdapter) {
-    this.adapter = adapter;
-  }
+  constructor(private readonly adapter: AnalyticsAdapter) {}
 
   /** 开始会话 */
   startSession(): void {
@@ -229,7 +250,7 @@ export class AnalyticsManager {
     this.trackEvent('game_end', {
       game_mode: gameMode,
       score,
-      duration
+      duration,
     });
   }
 
