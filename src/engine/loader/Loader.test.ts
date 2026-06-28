@@ -44,6 +44,18 @@ class JSONPlatformMock implements IPlatform {
   requestAnimationFrame(_cb: (time: number) => void): number {
     return 0;
   }
+
+  getStorage(_key: string): string | null {
+    return null;
+  }
+
+  setStorage(_key: string, _value: string): void {
+    return;
+  }
+
+  removeStorage(_key: string): void {
+    return;
+  }
 }
 
 describe('Loader', () => {
