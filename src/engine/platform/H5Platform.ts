@@ -88,6 +88,14 @@ export class H5Platform implements IPlatform {
     }
   }
 
+  removeStorage(key: string): void {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // 存储失败不影响主流程。
+    }
+  }
+
   private target(): HTMLElement {
     return this.canvas ?? document.body;
   }
