@@ -1,0 +1,17 @@
+{
+  "name": "wx-game-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.wx.ts --bundle --format=iife --platform=neutral --target=es2019 --outfile=dist/wechat/game.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lite-game-engine": "file:../../"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  }
+}
