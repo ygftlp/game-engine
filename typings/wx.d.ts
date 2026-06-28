@@ -14,6 +14,7 @@ interface WxApi {
   getStorageSync(key: string): unknown;
   setStorageSync(key: string, value: unknown): void;
   getFileSystemManager(): unknown;
+  reportAnalytics(eventName: string, data?: Record<string, unknown>): void;
 }
 
 interface WxSystemInfo {
