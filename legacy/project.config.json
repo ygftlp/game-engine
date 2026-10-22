@@ -1,0 +1,11 @@
+{
+  "appid": "touristappid",
+  "projectname": "lite-wx-game-engine",
+  "setting": {
+    "es6": false,
+    "minified": false,
+    "postcss": false
+  },
+  "compileType": "game",
+  "libVersion": "latest"
+}

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lite Game Engine Manual Starter</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at top, rgba(93, 184, 255, 0.25), transparent 40%),
+          linear-gradient(180deg, #06111d 0%, #04070f 100%);
+      }
+
+      main {
+        width: min(92vw, 420px);
+        color: #cfe6ff;
+        text-align: center;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 28px;
+      }
+
+      p {
+        margin: 0 0 16px;
+        color: #90abc8;
+      }
+
+      canvas {
+        width: 100%;
+        height: auto;
+        display: block;
+        border: 1px solid rgba(151, 201, 255, 0.24);
+        border-radius: 20px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+        background: #07111f;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Manual Starter</h1>
+      <p>Tap or click inside the canvas to spawn rotating stars.</p>
+      <script src="./dist/main.js"></script>
+    </main>
+  </body>
+</html>
