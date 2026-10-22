@@ -5,4 +5,7 @@ export default defineConfig({
     __DEV__: 'true',
     __APP_ENV__: '"development"',
   },
+  test: {
+    include: ['tests/**/*.test.ts'],
+  },
 });

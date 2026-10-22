@@ -1,181 +1,49 @@
-# lite-game-engine
+# game-kit（仓库：game-engine）
 
-轻量级通用 2D 游戏引擎（TypeScript + Canvas 2D + esbuild），一套代码支持微信小游戏、抖音小游戏、H5 三端。
+无头游戏逻辑组件库：纯 TypeScript、零平台依赖（不碰 canvas / wx / DOM 平台 API），
+输入输出都是数据。组件从**真实项目**中提取并被真实项目消费——先有消费者，再有组件。
 
-## 项目定位
+> 历史：本仓库原为 lite-game-engine（完整 2D 引擎）。2026-10-22 重构后方向转为组件库，
+> 旧引擎整体冻结于 `legacy/`（只读参考与组件矿场，其自述文档见 `legacy/ENGINE_README.md`）。
+> 包名 `game-kit`，仓库名保持 `game-engine`。
 
-当前仓库定位为**平台无关的 2D 游戏引擎 + 三端 Demo**，不是完整业务游戏项目。它提供主循环、场景树、渲染、输入、资源、音频、碰撞、UI、基础技能系统与平台适配能力，业务游戏可以基于这些 API 继续扩展。
+## 三铁律（防止再长出一个没人用的 23k 行摆设）
 
-## 设计原则：平台无关
+1. **没有真实消费者不进库**：组件必须正在被至少一个真实游戏/项目引用；从业务代码
+   提取，或为第二个消费者而抽象。凭空设计的组件一律拒绝。
+2. **进库必须带测试与说明**：每个组件目录含源码、`index.ts`、一页 README；
+   `tests/` 下有对应测试。`npm test` 与 `npm run typecheck` 必须全绿才算进库完成。
+3. **平台层永不进库**：渲染、场景管理、微信/抖音/H5 平台 API、UI 控件都是每款游戏
+   自己的皮，不属于组件。组件只依赖 `src/` 内的其他组件。
 
-引擎核心与具体平台解耦，核心代码不直接依赖 `wx` / `tt` / `document`。平台能力通过 `IPlatform` 接口从外部依赖注入。
+## 组件清单（v0.1.0，第一批）
 
-### 三层架构
+| 组件 | 路径 | 一句话 | 来源 |
+|---|---|---|---|
+| events | `src/events` | 类型友好的事件总线（on/once/off/emit） | lite-game-engine core（自带测试迁入） |
+| pool | `src/pool` | 通用对象池，热循环零分配 | lite-game-engine core（自带测试迁入） |
+| timer | `src/timer` | 计时器调度（延迟/重复/取消） | lite-game-engine utils（自带测试迁入） |
+| state-machine | `src/state-machine` | FSM + 分层 FSM，守卫与优先级转移 | lite-game-engine ai（测试新补） |
+| math | `src/math` | Vec2 二维向量 | lite-game-engine math（自带测试迁入） |
+| grid | `src/grid` | 网格 A* 寻路 + 空间网格宽相碰撞 | lite-game-engine ai/collision（测试新补；NavMesh 未迁入——无消费者） |
+| tween | `src/tween` | 补间动画（缓动/链式/管理器） | lite-game-engine effects（测试新补） |
 
-- **引擎核心层**：`Engine`、`Node`、`Scene`、`Renderer`、`Input`、`Loader`、`Audio`、`Collision`、`UIManager`、`SkillManager` 等。
-- **平台适配层**：`WxPlatform`、`TtPlatform`、`H5Platform`。
-- **游戏层 + 入口**：游戏逻辑用引擎 API 编写，入口按平台注入适配器。
+后续毕业队列（等真实抽取发生时进库，不提前占位）：行为树、Steering、
+FlashOut 的 input 路由、stealth 感知模型、playtest 灰测工具包、结算/战报模型。
 
-## 目录结构
-
-```text
-src/
-  engine/        引擎核心（平台无关，可复用）
-    platform/    平台接口与适配器
-    core/        主循环、节点树、场景、事件、对象池
-    render/      渲染器、精灵、纹理、文本
-    input/       输入系统
-    loader/      资源管理
-    audio/       音频
-    collision/   碰撞检测
-    math/        数学工具
-    skill/       基础技能模型与技能管理器
-    ui/          UI 组件与 UI 事件管理
-    utils/       日志等工具
-    index.ts     引擎统一入口
-  game/          示例游戏（三端复用同一份）
-  entries/       各平台入口（main.wx.ts / main.tt.ts / main.h5.ts）
-  web/           H5 的 index.html
-docs/
-  API.md
-  AI_ENGINE_USAGE.md
-templates/
-  wx-game-template/
-examples/
-  shooter/
-```
-
-## 安装与构建
+## 使用
 
 ```bash
 npm install
+npm run build:lib   # 产出 dist/lib（esm+cjs）与 dist/types
+npm test            # kit 测试（默认门禁）
 npm run typecheck
-npm run build
-npm test
+npm run test:legacy # 冻结区旧引擎测试（不进默认门禁）
 ```
 
-构建输出：
+消费方式与本仓库既有习惯一致：业务项目以 `file:` 依赖指向本仓库的 `dist/lib`
+（先在本仓库执行 `npm run build:lib`）。
 
-- 微信小游戏：`dist/wechat/game.js`、`dist/wechat/game.json`、`dist/wechat/project.config.json`
-- 抖音小游戏：`dist/douyin/game.js`、`dist/douyin/game.json`
-- H5：`dist/h5/index.html`、`dist/h5/game.h5.js`
+## 版本
 
-详细发布说明见 [`docs/Release.md`](docs/Release.md)。
-
-## AI 使用本引擎开发游戏
-
-如果你的本地有多个游戏项目，建议把本仓库作为统一引擎底座，具体游戏项目只依赖并调用公开 API。
-
-AI 开发业务游戏时优先阅读：
-
-1. [`docs/AI_ENGINE_USAGE.md`](docs/AI_ENGINE_USAGE.md)
-2. [`docs/API.md`](docs/API.md)
-3. [`templates/wx-game-template`](templates/wx-game-template)
-4. [`examples/shooter`](examples/shooter)
-
-推荐工作区结构：
-
-```text
-workspace/
-  packages/
-    game-engine/
-  games/
-    space-shooter/
-    parkour-game/
-    puzzle-game/
-```
-
-业务游戏通过本地依赖使用引擎：
-
-```json
-{
-  "dependencies": {
-    "lite-game-engine": "file:../../packages/game-engine"
-  }
-}
-```
-
-AI 规则：
-
-- 不要在业务项目里重写 `Engine` / `Scene` / `Renderer` / `Input`。
-- 不要直接访问 `wx` / `tt` / `document`。
-- 新游戏对象写在业务项目的 `src/objects/`。
-- 新页面写成 `Scene`。
-- 新 UI 优先使用 `UIManager`、`Button`、`ScrollView`。
-- 碰撞、资源、输入优先使用引擎公开 API。
-
-## 最小示例
-
-```ts
-import { Engine, Scene, WxPlatform } from 'lite-game-engine';
-
-class GameScene extends Scene {
-  onEnter(): void {
-    console.log('scene enter');
-  }
-
-  update(dt: number): void {
-    super.update(dt);
-    // 游戏逻辑
-  }
-}
-
-const engine = new Engine(new WxPlatform());
-engine.setScene(new GameScene());
-engine.start();
-```
-
-## UI 示例
-
-```ts
-import { Button, UIManager } from 'lite-game-engine';
-
-const ui = new UIManager(engine.input);
-const button = new Button('开始游戏', 160, 56);
-button.x = engine.width / 2;
-button.y = engine.height / 2;
-button.onClickCallback = () => {
-  console.log('start');
-};
-ui.addWidget(button);
-engine.currentScene?.addChild(ui);
-```
-
-## 日志与资源
-
-```ts
-import { Loader, Logger, LogLevel } from 'lite-game-engine';
-
-Logger.setLevel(LogLevel.INFO);
-
-await engine.loader.loadAll([
-  { type: 'json', url: 'assets/config.json' },
-  { type: 'texture', url: 'assets/player.png' }
-]);
-```
-
-## API 文档
-
-完整 API 说明见 [`docs/API.md`](docs/API.md)。当前文档只记录仓库已实现并从 `src/engine/index.ts` 导出的公开 API。
-
-## Skill / 技能系统状态
-
-当前仓库已提供基础 Skill 能力：
-
-```text
-src/engine/skill/
-  Skill.ts
-  SkillManager.ts
-```
-
-已支持技能注册、施放判断、施放、施法时间、持续时间、冷却更新、冷却进度读取。后续如果要支持更完整的 Buff、触发器、技能特效、目标选择和资源消耗，可以继续扩展独立模块。
-
-## 复用与扩展
-
-新增平台时，实现一个 `IPlatform` 适配器并提供平台入口即可。引擎核心与游戏代码无需直接改为平台 API。
-
-## 示例场景
-
-`src/game/DemoScene.ts` 是一个可拖动方块 Demo：玩家方块与目标方块发生 AABB 碰撞时变色。它用于验证三端输入、渲染与碰撞链路。
-
-`examples/shooter` 是给 AI 参考的射击游戏业务结构示例，展示如何用引擎 API 组织玩家、敌人、子弹、HUD 和碰撞逻辑。
+语义化版本。破坏性变更升 minor（0.x 阶段）。发布以 git tag 为准（`v0.1.0` 起）。

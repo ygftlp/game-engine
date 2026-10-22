@@ -1,19 +1,18 @@
-// esbuild 构建脚本：生成可被外部项目引用的库格式
+// esbuild 构建脚本：把 game-kit（src/）打成可被外部项目引用的库格式。
+// 产物：dist/lib/index.mjs + index.cjs、dist/types/** 类型声明、dist/lib/package.json。
+// 构建前先清 dist，避免旧产物（如已冻结引擎的类型）混入。
 import { build } from 'esbuild';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 
-const watch = process.argv.includes('--watch');
-
-// 库模式构建配置
 const libConfig = {
-  entryPoints: ['src/engine/index.ts'],
+  entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'neutral',
   target: ['es2019'],
   sourcemap: true,
   minify: false,
-  external: [], // 如果有外部依赖需要声明
+  external: [],
   define: {
     __DEV__: 'false',
     __APP_ENV__: '"production"'
@@ -21,33 +20,21 @@ const libConfig = {
 };
 
 async function run() {
+  rmSync('dist', { recursive: true, force: true });
   mkdirSync('dist/lib', { recursive: true });
   mkdirSync('dist/types', { recursive: true });
 
-  // 1. 构建ESM格式
-  await build({
-    ...libConfig,
-    outfile: 'dist/lib/index.mjs',
-    format: 'esm',
-  });
+  await build({ ...libConfig, outfile: 'dist/lib/index.mjs', format: 'esm' });
+  await build({ ...libConfig, outfile: 'dist/lib/index.cjs', format: 'cjs' });
 
-  // 2. 构建CJS格式
-  await build({
-    ...libConfig,
-    outfile: 'dist/lib/index.cjs',
-    format: 'cjs',
-  });
-
-  // 3. 生成TypeScript类型声明。失败时应直接让发布构建失败，避免产出缺失类型的包。
+  // 类型声明：rootDir=src 时 tsc 直接产出 dist/types/index.d.ts。
+  // 失败必须让构建失败，禁止产出缺类型的包。
   execSync('tsc --declaration --emitDeclarationOnly --outDir dist/types', { stdio: 'inherit' });
-  // tsc 会按 rootDir 输出 dist/types/engine/index.d.ts；这里补一个包入口声明，匹配 package.json 的 types 字段。
-  writeFileSync('dist/types/index.d.ts', "export * from './engine';\n");
 
-  // 4. 生成package.json用于发布
   const pkg = {
-    name: 'lite-game-engine',
-    version: '0.2.0',
-    description: '轻量级通用 2D 游戏引擎 (TypeScript + Canvas 2D)',
+    name: 'game-kit',
+    version: '0.1.0',
+    description: '无头游戏逻辑组件库（纯 TypeScript、零平台依赖）',
     main: './index.cjs',
     module: './index.mjs',
     types: '../types/index.d.ts',
@@ -59,16 +46,15 @@ async function run() {
       }
     },
     files: ['*.mjs', '*.cjs', '*.map', '../types'],
-    keywords: ['game-engine', '2d', 'canvas', 'typescript'],
+    keywords: ['game', 'components', 'typescript', 'headless'],
     license: 'MIT'
   };
-
   writeFileSync('dist/lib/package.json', JSON.stringify(pkg, null, 2));
 
-  console.log('[build] Library build done -> dist/lib/');
-  console.log('  - ESM: dist/lib/index.mjs');
-  console.log('  - CJS: dist/lib/index.cjs');
-  console.log('  - Types: dist/types/');
+  console.log('[build] game-kit library build done -> dist/lib/');
 }
 
-run();
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
