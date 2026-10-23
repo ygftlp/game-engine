@@ -138,6 +138,10 @@ export class GridPathfinder {
 
   /** 设置节点可行走状态 */
   setWalkable(x: number, y: number, walkable: boolean): void {
+    // Non-integer coordinates (NaN/undefined from a bad caller) are a
+    // no-op: NaN comparisons are all false, so the bounds check alone
+    // cannot stop them.
+    if (!Number.isInteger(x) || !Number.isInteger(y)) return;
     if (y >= 0 && y < this.height && x >= 0 && x < this.width) {
       this.grid[y][x] = walkable;
     }
@@ -145,6 +149,10 @@ export class GridPathfinder {
 
   /** 获取节点可行走状态 */
   isWalkable(x: number, y: number): boolean {
+    // Fail closed on non-integer input: grid[NaN] is undefined and
+    // reading [NaN] off it throws, which killed a consumer's main
+    // loop (FlashOut panel round 3, boss pathfinding freeze).
+    if (!Number.isInteger(x) || !Number.isInteger(y)) return false;
     if (y < 0 || y >= this.height || x < 0 || x >= this.width) return false;
     return this.grid[y][x];
   }
